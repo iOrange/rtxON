@@ -171,14 +171,14 @@ void RtxApp::CreateScene() {
 
     const uint32_t indices[3] = { 0, 1, 2 };
 
-    VkResult error = vb.Create(sizeof(vertices), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VkResult error = vb.Create(sizeof(vertices), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     CHECK_VK_ERROR(error, "vb.Create");
 
     if (!vb.UploadData(vertices, vb.GetSize())) {
         assert(false && "Failed to upload vertex buffer");
     }
 
-    error = ib.Create(sizeof(indices), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    error = ib.Create(sizeof(indices), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     CHECK_VK_ERROR(error, "ib.Create");
 
     if (!ib.UploadData(indices, ib.GetSize())) {
@@ -204,7 +204,7 @@ void RtxApp::CreateScene() {
     geometry.geometry.triangles.transformOffset = 0;
     geometry.geometry.aabbs = { };
     geometry.geometry.aabbs.sType = VK_STRUCTURE_TYPE_GEOMETRY_AABB_NVX;
-    geometry.flags = 0;
+    geometry.flags = VK_GEOMETRY_OPAQUE_BIT_NVX;
 
 
     // here we create our bottom-level acceleration structure for our happy triangle
@@ -403,7 +403,7 @@ void RtxApp::CreateShaderBindingTable() {
     const uint32_t numGroups = 3; // !! should be same amount of groups we used to create mRTPipeline
     const uint32_t shaderBindingTableSize = mRTProps.shaderHeaderSize * numGroups;
 
-    VkResult error = mShaderBindingTable.Create(shaderBindingTableSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    VkResult error = mShaderBindingTable.Create(shaderBindingTableSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
     CHECK_VK_ERROR(error, "mShaderBindingTable.Create");
 
     void* mem = mShaderBindingTable.Map(shaderBindingTableSize);
