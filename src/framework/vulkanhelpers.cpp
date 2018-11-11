@@ -283,7 +283,7 @@ bool Image::Load(const char* fileName) {
 
         Buffer stagingBuffer;
         VkResult error = stagingBuffer.Create(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        if (VK_SUCCESS != error && stagingBuffer.UploadData(imageData, imageSize)) {
+        if (VK_SUCCESS == error && stagingBuffer.UploadData(imageData, imageSize)) {
             stbi_image_free(imageData);
 
             VkExtent3D imageExtent {

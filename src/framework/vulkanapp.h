@@ -11,6 +11,7 @@ struct AppSettings {
     VkFormat    surfaceFormat;
     bool        enableValidation;
     bool        supportRaytracing;
+    bool        supportDescriptorIndexing;
 };
 
 class VulkanApp {

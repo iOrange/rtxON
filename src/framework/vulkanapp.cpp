@@ -105,7 +105,7 @@ bool VulkanApp::Initialize() {
         return false;
     }
 
-    vulkanhelpers::Initialize(mPhysicalDevice, mDevice, mCommandPool, mTransferQueue);
+    vulkanhelpers::Initialize(mPhysicalDevice, mDevice, mCommandPool, mGraphicsQueue);
 
     if (!this->InitializeOffscreenImage()) {
         return false;
@@ -150,6 +150,7 @@ void VulkanApp::InitializeSettings() {
     mSettings.surfaceFormat = VK_FORMAT_B8G8R8A8_UNORM;
     mSettings.enableValidation = false;
     mSettings.supportRaytracing = false;
+    mSettings.supportDescriptorIndexing = false;
 
     this->InitSettings();
 }
@@ -276,12 +277,22 @@ bool VulkanApp::InitializeDevicesAndQueues() {
         deviceExtensions.push_back(VK_NVX_RAYTRACING_EXTENSION_NAME);
     }
 
-    VkPhysicalDeviceFeatures features = { };
-    vkGetPhysicalDeviceFeatures(mPhysicalDevice, &features); // enable all the features our GPU has
+    VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptorIndexing = { };
+    descriptorIndexing.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+
+    VkPhysicalDeviceFeatures2 features2 = { };
+    features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+
+    if (mSettings.supportDescriptorIndexing) {
+        deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+        features2.pNext = &descriptorIndexing;
+    }
+
+    vkGetPhysicalDeviceFeatures2(mPhysicalDevice, &features2); // enable all the features our GPU has
 
     VkDeviceCreateInfo deviceCreateInfo;
     deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceCreateInfo.pNext = nullptr;
+    deviceCreateInfo.pNext = &features2;
     deviceCreateInfo.flags = 0;
     deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(deviceQueueCreateInfos.size());
     deviceCreateInfo.pQueueCreateInfos = deviceQueueCreateInfos.data();
@@ -289,7 +300,7 @@ bool VulkanApp::InitializeDevicesAndQueues() {
     deviceCreateInfo.ppEnabledLayerNames = nullptr;
     deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
     deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
-    deviceCreateInfo.pEnabledFeatures = &features;
+    deviceCreateInfo.pEnabledFeatures = nullptr;
 
     error = vkCreateDevice(mPhysicalDevice, &deviceCreateInfo, nullptr, &mDevice);
     if (VK_SUCCESS != error) {

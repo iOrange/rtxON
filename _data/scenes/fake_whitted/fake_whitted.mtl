@@ -1,0 +1,44 @@
+# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
+# File Created: 08.11.2018 00:29:41
+
+newmtl 02___Default
+	Ns 10.00000
+	Ni 1.50000
+	d 1.00000
+	Tr 0.00000
+	Tf 1.00000 1.00000 1.00000
+	illum 2
+	Ka 0.58824 0.58824 0.58824
+	Kd 0.58824 0.58824 0.58824
+	Ks 0.00000 0.00000 0.00000
+	Ke 0.00000 0.00000 0.00000
+	map_Ka concrete_floor_02_diff_1k.jpg
+	map_Kd concrete_floor_02_diff_1k.jpg
+
+newmtl default
+	Ns 10.00000
+	Ni 1.50000
+	d 1.00000
+	Tr 0.00000
+	Tf 1.00000 1.00000 1.00000
+	illum 2
+	Ka 0.58800 0.58800 0.58800
+	Kd 0.58800 0.58800 0.58800
+	Ks 0.00000 0.00000 0.00000
+	Ke 0.00000 0.00000 0.00000
+	map_Ka floor_tiles_06_diff_1k.jpg
+	map_Kd floor_tiles_06_diff_1k.jpg
+
+newmtl 03___Default
+	Ns 10.00000
+	Ni 1.50000
+	d 1.00000
+	Tr 0.00000
+	Tf 1.00000 1.00000 1.00000
+	illum 2
+	Ka 0.58824 0.58824 0.58824
+	Kd 0.58824 0.58824 0.58824
+	Ks 0.00000 0.00000 0.00000
+	Ke 0.00000 0.00000 0.00000
+	map_Ka metal_plate_diff_1k.jpg
+	map_Kd metal_plate_diff_1k.jpg
