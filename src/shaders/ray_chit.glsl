@@ -34,11 +34,13 @@ void main() {
     VertexAttribute v2 = AttribsArray[nonuniformEXT(gl_InstanceCustomIndexNVX)].VertexAttribs[int(face.z)];
 
     // interpolate our vertex attribs
-    const vec3 normal = BaryLerp(v0.normal.xyz, v1.normal.xyz, v2.normal.xyz, barycentrics);
+    const vec3 normal = normalize(BaryLerp(v0.normal.xyz, v1.normal.xyz, v2.normal.xyz, barycentrics));
     const vec2 uv = BaryLerp(v0.uv.xy, v1.uv.xy, v2.uv.xy, barycentrics);
 
     const vec3 texel = textureLod(TexturesArray[nonuniformEXT(matID)], uv, 0.0f).rgb;
 
+    const float isTeapot = (2 == gl_InstanceCustomIndexNVX) ? 1.0f : 0.0f;
+
     PrimaryRay.colorAndDist = vec4(texel, gl_HitTNVX);
-    PrimaryRay.normal = vec4(normal, 0.0f);
+    PrimaryRay.normal = vec4(normal, isTeapot);
 }

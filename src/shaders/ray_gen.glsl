@@ -59,9 +59,32 @@ void main() {
              tmax,
              SWS_LOC_PRIMARY_RAY);
 
+    const float isTeapot = PrimaryRay.normal.w;
+
+    float hitDistance = PrimaryRay.colorAndDist.w;
+    vec3 hitNormal = PrimaryRay.normal.xyz;
+
+    // if teapot - let's reflect!
+    if (isTeapot > 0.0f) {
+        const vec3 hitPos = origin + direction * hitDistance + hitNormal * 0.01f;
+        const vec3 reflectedDir = reflect(direction, hitNormal);
+
+        traceNVX(Scene,
+                 rayFlags,
+                 cullMask,
+                 primaryRecordOffset,
+                 stbRecordStride,
+                 primaryMissIndex,
+                 hitPos,
+                 0.0f,
+                 reflectedDir,
+                 tmax,
+                 SWS_LOC_PRIMARY_RAY);
+    }
+
     const vec3 hitColor = PrimaryRay.colorAndDist.rgb;
-    const float hitDistance = PrimaryRay.colorAndDist.w;
-    const vec3 hitNormal = PrimaryRay.normal.xyz;
+    hitDistance = PrimaryRay.colorAndDist.w;
+    hitNormal = PrimaryRay.normal.xyz;
 
     float lighting = 1.0f;
 
