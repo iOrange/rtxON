@@ -36,87 +36,82 @@ void main() {
 
     const float aspect = float(gl_LaunchSizeNVX.x) / float(gl_LaunchSizeNVX.y);
 
-    const vec3 origin = Params.camPos.xyz;
-    const vec3 direction = CalcRayDir(uv, aspect);
+    vec3 origin = Params.camPos.xyz;
+    vec3 direction = CalcRayDir(uv, aspect);
 
     const uint rayFlags = gl_RayFlagsOpaqueNVX;
     const uint cullMask = 0xFF;
+
     const uint primaryRecordOffset = 0;
     const uint stbRecordStride = 0;
     const uint primaryMissIndex = 0;
-    const float tmin = Params.camNearFarFov.x;
+
+    const uint shadowRayFlags = gl_RayFlagsOpaqueNVX | gl_RayFlagsTerminateOnFirstHitNVX;
+    const uint shadowRecordOffset = 1;
+    const uint shadowMissIndex = 1;
+
+    const float tmin = 0.0f;
     const float tmax = Params.camNearFarFov.y;
 
-    traceNVX(Scene,
-             rayFlags,
-             cullMask,
-             primaryRecordOffset,
-             stbRecordStride,
-             primaryMissIndex,
-             origin,
-             tmin,
-             direction,
-             tmax,
-             SWS_LOC_PRIMARY_RAY);
+    vec3 finalColor = vec3(0.0f);
 
-    const float isTeapot = PrimaryRay.normal.w;
-
-    float hitDistance = PrimaryRay.colorAndDist.w;
-    vec3 hitNormal = PrimaryRay.normal.xyz;
-
-    // if teapot - let's reflect!
-    if (isTeapot > 0.0f) {
-        const vec3 hitPos = origin + direction * hitDistance + hitNormal * 0.01f;
-        const vec3 reflectedDir = reflect(direction, hitNormal);
-
+    for (int i = 0; i < SWS_MAX_RECURSION; ++i) {
         traceNVX(Scene,
                  rayFlags,
                  cullMask,
                  primaryRecordOffset,
                  stbRecordStride,
                  primaryMissIndex,
-                 hitPos,
-                 0.0f,
-                 reflectedDir,
+                 origin,
+                 tmin,
+                 direction,
                  tmax,
                  SWS_LOC_PRIMARY_RAY);
-    }
 
-    const vec3 hitColor = PrimaryRay.colorAndDist.rgb;
-    hitDistance = PrimaryRay.colorAndDist.w;
-    hitNormal = PrimaryRay.normal.xyz;
+        const vec3 hitColor = PrimaryRay.colorAndDist.rgb;
+        const float hitDistance = PrimaryRay.colorAndDist.w;
 
-    float lighting = 1.0f;
-
-    // if we hit something
-    if (hitDistance > 0.0f) {
-        const vec3 hitPos = origin + direction * hitDistance;
-        const vec3 toLight = normalize(Params.sunPosAndAmbient.xyz);
-
-        const vec3 shadowRayOrigin = hitPos + hitNormal * 0.01f;
-
-        const uint shadowRayFlags = gl_RayFlagsOpaqueNVX | gl_RayFlagsTerminateOnFirstHitNVX;
-        const uint shadowRecordOffset = 1;
-        const uint shadowMissIndex = 1;
-
-        traceNVX(Scene,
-                 rayFlags,
-                 cullMask,
-                 shadowRecordOffset,
-                 stbRecordStride,
-                 shadowMissIndex,
-                 shadowRayOrigin,
-                 0.0f,
-                 toLight,
-                 tmax,
-                 SWS_LOC_SHADOW_RAY);
-
-        if (ShadowRay.distance > 0.0f) {
-            lighting = Params.sunPosAndAmbient.w;
+        // if hit background - quit
+        if (hitDistance < 0.0f) {
+            finalColor += hitColor;
+            break;
         } else {
-            lighting = max(Params.sunPosAndAmbient.w, dot(hitNormal, toLight));
+            const vec3 hitNormal = PrimaryRay.normal.xyz;
+            const float isTeapot = PrimaryRay.normal.w;
+
+            const vec3 hitPos = origin + direction * hitDistance;
+
+            if (isTeapot > 0.0f) {
+                // our teapot is mirror, so continue
+
+                origin = hitPos + hitNormal * 0.01f;
+                direction = reflect(direction, hitNormal);
+            } else {
+                // we hit diffuse primitive - simple lambertian
+
+                const vec3 toLight = normalize(Params.sunPosAndAmbient.xyz);
+                const vec3 shadowRayOrigin = hitPos + hitNormal * 0.01f;
+
+                traceNVX(Scene,
+                         rayFlags,
+                         cullMask,
+                         shadowRecordOffset,
+                         stbRecordStride,
+                         shadowMissIndex,
+                         shadowRayOrigin,
+                         0.0f,
+                         toLight,
+                         tmax,
+                         SWS_LOC_SHADOW_RAY);
+
+                const float lighting = (ShadowRay.distance > 0.0f) ? Params.sunPosAndAmbient.w : max(Params.sunPosAndAmbient.w, dot(hitNormal, toLight));
+
+                finalColor += hitColor * lighting;
+
+                break;
+            }
         }
     }
 
-    imageStore(ResultImage, ivec2(gl_LaunchIDNVX.xy), vec4(LinearToSrgb(hitColor * lighting), 1.0f));
+    imageStore(ResultImage, ivec2(gl_LaunchIDNVX.xy), vec4(LinearToSrgb(finalColor), 1.0f));
 }

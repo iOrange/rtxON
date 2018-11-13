@@ -27,7 +27,7 @@
 #define SWS_LOC_SHADOW_RAY          2
 
 
-#define SWS_MAX_RECURSION           2
+#define SWS_MAX_RECURSION           5
 
 
 struct RayPayload {
