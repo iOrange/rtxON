@@ -29,10 +29,14 @@
 
 #define SWS_MAX_RECURSION           5
 
+#define OBJECT_ID_BUNNY             0.0f
+#define OBJECT_ID_PLANE             1.0f
+#define OBJECT_ID_TEAPOT            2.0f
+
 
 struct RayPayload {
     vec4 colorAndDist;
-    vec4 normal;
+    vec4 normalAndObjId;
 };
 
 struct ShadowRayPayload {

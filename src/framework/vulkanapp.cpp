@@ -11,6 +11,23 @@
 #include "volk.c"
 
 
+void FPSMeter::Update(const float dt) {
+    this->fpsAccumulator += dt - this->fpsHistory[this->historyPointer];
+    this->fpsHistory[this->historyPointer] = dt;
+    this->historyPointer = (this->historyPointer + 1) % FPSMeter::kFPSHistorySize;
+    this->fps = (this->fpsAccumulator > 0.0f) ? (1.0f / (this->fpsAccumulator / static_cast<float>(FPSMeter::kFPSHistorySize))) : FLT_MAX;
+}
+
+float FPSMeter::GetFPS() const {
+    return this->fps;
+}
+
+float FPSMeter::GetFrameTime() const {
+    return 1000.0f / this->fps;
+}
+
+
+
 VulkanApp::VulkanApp()
     : mSettings({})
     , mWindow(nullptr)
@@ -149,6 +166,7 @@ void VulkanApp::InitializeSettings() {
     mSettings.resolutionY = 720;
     mSettings.surfaceFormat = VK_FORMAT_B8G8R8A8_UNORM;
     mSettings.enableValidation = false;
+    mSettings.enableVSync = true;
     mSettings.supportRaytracing = false;
     mSettings.supportDescriptorIndexing = false;
 
@@ -389,6 +407,22 @@ bool VulkanApp::InitializeSwapchain() {
     Array<VkPresentModeKHR> presentModes(presentModeCount);
     vkGetPhysicalDeviceSurfacePresentModesKHR(mPhysicalDevice, mSurface, &presentModeCount, presentModes.data());
 
+    // trying to find best present mode for us
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    if (!mSettings.enableVSync) {
+        // if we don't want vsync - let's find best one
+        for (const VkPresentModeKHR mode : presentModes) {
+            if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+                // this is the best one, so if we found it - just quit
+                presentMode = mode;
+                break;
+            } else if (mode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+                // we'll use this one if no mailbox supported
+                presentMode = mode;
+            }
+        }
+    }
+
     VkSwapchainKHR prevSwapchain = mSwapchain;
 
     VkSwapchainCreateInfoKHR swapchainCreateInfo;
@@ -407,7 +441,7 @@ bool VulkanApp::InitializeSwapchain() {
     swapchainCreateInfo.pQueueFamilyIndices = nullptr;
     swapchainCreateInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swapchainCreateInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    swapchainCreateInfo.presentMode = presentMode;
     swapchainCreateInfo.clipped = VK_TRUE;
     swapchainCreateInfo.oldSwapchain = prevSwapchain;
 
@@ -587,6 +621,8 @@ void VulkanApp::FillCommandBuffers() {
 
 //
 void VulkanApp::ProcessFrame(const float dt) {
+    mFPSMeter.Update(dt);
+
     uint32_t imageIndex;
     VkResult error = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, mSemaphoreImageAcquired, nullptr, &imageIndex);
     if (VK_SUCCESS != error) {

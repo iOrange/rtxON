@@ -9,6 +9,14 @@ using Array = std::vector<T>;
 using String = std::basic_string<char, std::char_traits<char>>;
 using WString = std::basic_string<wchar_t, std::char_traits<wchar_t>>;
 
+template <typename T>
+String ToString(const T f, const int n = 6) {
+    std::ostringstream out;
+    out.precision(n);
+    out << std::fixed << f;
+    return out.str();
+}
+
 
 #pragma warning(push)
 #pragma warning(disable : 4201) // C4201: nonstandard extension used: nameless struct/union

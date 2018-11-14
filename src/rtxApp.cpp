@@ -47,6 +47,7 @@ RtxApp::~RtxApp() {
 void RtxApp::InitSettings() {
     mSettings.name = "rtxON";
     mSettings.enableValidation = true;
+    mSettings.enableVSync = false;
     mSettings.supportRaytracing = true;
     mSettings.supportDescriptorIndexing = true;
 }
@@ -172,6 +173,13 @@ void RtxApp::OnKey(const int key, const int scancode, const int action, const in
 }
 
 void RtxApp::Update(const size_t, const float dt) {
+    // Update FPS text
+    String frameStats = ToString(mFPSMeter.GetFPS(), 1) + " FPS (" + ToString(mFPSMeter.GetFrameTime(), 1) + " ms)";
+    String fullTitle = mSettings.name + "  " + frameStats;
+    glfwSetWindowTitle(mWindow, fullTitle.c_str());
+    /////////////////
+
+
     UniformParams* params = reinterpret_cast<UniformParams*>(mCameraBuffer.Map());
 
     params->sunPosAndAmbient = vec4(sSunPos, sAmbientLight);

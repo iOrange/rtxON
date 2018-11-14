@@ -14,6 +14,7 @@ layout(set = SWS_CAMDATA_SET,      binding = SWS_CAMDATA_BINDING, std140)     un
 layout(location = SWS_LOC_PRIMARY_RAY) rayPayloadNVX RayPayload PrimaryRay;
 layout(location = SWS_LOC_SHADOW_RAY)  rayPayloadNVX ShadowRayPayload ShadowRay;
 
+const float kBunnyRefractionIndex = 1.0f / 1.52f; // glass
 
 vec3 CalcRayDir(vec2 screenUV, float aspect) {
     vec3 u = Params.camSide.xyz;
@@ -76,21 +77,29 @@ void main() {
             finalColor += hitColor;
             break;
         } else {
-            const vec3 hitNormal = PrimaryRay.normal.xyz;
-            const float isTeapot = PrimaryRay.normal.w;
+            const vec3 hitNormal = PrimaryRay.normalAndObjId.xyz;
+            const float objectId = PrimaryRay.normalAndObjId.w;
 
             const vec3 hitPos = origin + direction * hitDistance;
 
-            if (isTeapot > 0.0f) {
-                // our teapot is mirror, so continue
+            if (objectId == OBJECT_ID_TEAPOT) {
+                // our teapot is mirror, so reflect and continue
 
-                origin = hitPos + hitNormal * 0.01f;
+                origin = hitPos + hitNormal * 0.001f;
                 direction = reflect(direction, hitNormal);
+            } else if (objectId == OBJECT_ID_BUNNY) {
+                // our bunny is glass, so refract and continue
+
+                const float NdotD = dot(hitNormal, direction);
+                const vec3 refrNormal = (NdotD > 0.0f) ? -hitNormal : hitNormal;
+
+                origin = hitPos + direction * 0.001f;
+                direction = refract(direction, refrNormal, kBunnyRefractionIndex);
             } else {
                 // we hit diffuse primitive - simple lambertian
 
                 const vec3 toLight = normalize(Params.sunPosAndAmbient.xyz);
-                const vec3 shadowRayOrigin = hitPos + hitNormal * 0.01f;
+                const vec3 shadowRayOrigin = hitPos + hitNormal * 0.001f;
 
                 traceNVX(Scene,
                          rayFlags,

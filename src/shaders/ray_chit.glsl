@@ -39,8 +39,8 @@ void main() {
 
     const vec3 texel = textureLod(TexturesArray[nonuniformEXT(matID)], uv, 0.0f).rgb;
 
-    const float isTeapot = (2 == gl_InstanceCustomIndexNVX) ? 1.0f : 0.0f;
+    const float objId = float(gl_InstanceCustomIndexNVX);
 
     PrimaryRay.colorAndDist = vec4(texel, gl_HitTNVX);
-    PrimaryRay.normal = vec4(normal, isTeapot);
+    PrimaryRay.normalAndObjId = vec4(normal, objId);
 }
