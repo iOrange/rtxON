@@ -98,7 +98,7 @@ void main() {
                 const vec3 shadowRayOrigin = hitPos + hitNormal * 0.001f;
 
                 traceNVX(Scene,
-                         rayFlags,
+                         shadowRayFlags,
                          cullMask,
                          SWS_SHADOW_HIT_SHADERS_IDX,
                          stbRecordStride,
