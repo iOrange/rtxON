@@ -6,32 +6,37 @@
 #include "framework/common.h"
 #endif // __cplusplus
 
+//
+#define SWS_PRIMARY_HIT_SHADERS_IDX     0
+#define SWS_PRIMARY_MISS_SHADERS_IDX    0
+#define SWS_SHADOW_HIT_SHADERS_IDX      1
+#define SWS_SHADOW_MISS_SHADERS_IDX     1
+
 // resource locations
-#define SWS_SCENE_AS_SET            0
-#define SWS_SCENE_AS_BINDING        0
-#define SWS_RESULT_IMAGE_SET        0
-#define SWS_RESULT_IMAGE_BINDING    1
-#define SWS_CAMDATA_SET             0
-#define SWS_CAMDATA_BINDING         2
+#define SWS_SCENE_AS_SET                0
+#define SWS_SCENE_AS_BINDING            0
+#define SWS_RESULT_IMAGE_SET            0
+#define SWS_RESULT_IMAGE_BINDING        1
+#define SWS_CAMDATA_SET                 0
+#define SWS_CAMDATA_BINDING             2
 
-#define SWS_MATIDS_SET              1
-#define SWS_ATTRIBS_SET             2
-#define SWS_FACES_SET               3
-#define SWS_TEXTURES_SET            4
+#define SWS_MATIDS_SET                  1
+#define SWS_ATTRIBS_SET                 2
+#define SWS_FACES_SET                   3
+#define SWS_TEXTURES_SET                4
 
-#define SWS_NUM_SETS                5
+#define SWS_NUM_SETS                    5
 
 // cross-shader locations
-#define SWS_LOC_PRIMARY_RAY         0
-#define SWS_LOC_HIT_ATTRIBS         1
-#define SWS_LOC_SHADOW_RAY          2
+#define SWS_LOC_PRIMARY_RAY             0
+#define SWS_LOC_HIT_ATTRIBS             1
+#define SWS_LOC_SHADOW_RAY              2
 
+#define SWS_MAX_RECURSION               5
 
-#define SWS_MAX_RECURSION           5
-
-#define OBJECT_ID_BUNNY             0.0f
-#define OBJECT_ID_PLANE             1.0f
-#define OBJECT_ID_TEAPOT            2.0f
+#define OBJECT_ID_BUNNY                 0.0f
+#define OBJECT_ID_PLANE                 1.0f
+#define OBJECT_ID_TEAPOT                2.0f
 
 
 struct RayPayload {

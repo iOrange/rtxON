@@ -39,6 +39,43 @@ struct RTScene {
 };
 
 
+class SBTHelper {
+public:
+    SBTHelper();
+    ~SBTHelper() = default;
+
+    void        Initialize(const uint32_t numHitGroups, const uint32_t numMissGroups, const uint32_t shaderHeaderSize);
+    void        Destroy();
+    void        SetRaygenStage(const VkPipelineShaderStageCreateInfo& stage);
+    void        AddStageToHitGroup(const Array<VkPipelineShaderStageCreateInfo>& stages, const uint32_t groupIndex);
+    void        AddStageToMissGroup(const VkPipelineShaderStageCreateInfo& stage, const uint32_t groupIndex);
+
+    uint32_t    GetGroupsStride() const;
+    uint32_t    GetNumGroups() const;
+    uint32_t    GetRaygenOffset() const;
+    uint32_t    GetHitGroupsOffset() const;
+    uint32_t    GetMissGroupsOffset() const;
+
+    uint32_t                                GetNumStages() const;
+    const VkPipelineShaderStageCreateInfo*  GetStages() const;
+    const uint32_t*                         GetGroupNumbers() const;
+
+    uint32_t    GetSBTSize() const;
+    bool        CreateSBT(VkDevice device, VkPipeline rtPipeline);
+    VkBuffer    GetSBTBuffer() const;
+
+private:
+    uint32_t                                mShaderHeaderSize;
+    uint32_t                                mNumHitGroups;
+    uint32_t                                mNumMissGroups;
+    Array<uint32_t>                         mNumHitShaders;
+    Array<uint32_t>                         mNumMissShaders;
+    Array<VkPipelineShaderStageCreateInfo>  mStages;
+    Array<uint32_t>                         mGroupNumbers;
+    vulkanhelpers::Buffer                   mSBT;
+};
+
+
 class RtxApp : public VulkanApp {
 public:
     RtxApp();
@@ -66,8 +103,7 @@ private:
     void CreateCamera();
     void UpdateCameraParams(struct UniformParams* params, const float dt);
     void CreateDescriptorSetsLayouts();
-    void CreateRaytracingPipeline();
-    void CreateShaderBindingTable();
+    void CreateRaytracingPipelineAndSBT();
     void UpdateDescriptorSets();
 
 private:
@@ -77,7 +113,7 @@ private:
     VkDescriptorPool                mRTDescriptorPool;
     Array<VkDescriptorSet>          mRTDescriptorSets;
 
-    vulkanhelpers::Buffer           mShaderBindingTable;
+    SBTHelper                       mSBT;
 
     RTScene                         mScene;
 

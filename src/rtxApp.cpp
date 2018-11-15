@@ -26,6 +26,7 @@ struct VkGeometryInstance {
 };
 
 
+
 RtxApp::RtxApp()
     : VulkanApp()
     , mRTPipelineLayout(VK_NULL_HANDLE)
@@ -57,8 +58,7 @@ void RtxApp::InitApp() {
     this->CreateScene();
     this->CreateCamera();
     this->CreateDescriptorSetsLayouts();
-    this->CreateRaytracingPipeline();
-    this->CreateShaderBindingTable();
+    this->CreateRaytracingPipelineAndSBT();
     this->UpdateDescriptorSets();
 }
 
@@ -84,7 +84,7 @@ void RtxApp::FreeResources() {
         mRTDescriptorPool = VK_NULL_HANDLE;
     }
 
-    mShaderBindingTable.Destroy();
+    mSBT.Destroy();
 
     if (mRTPipeline) {
         vkDestroyPipeline(mDevice, mRTPipeline, nullptr);
@@ -113,15 +113,10 @@ void RtxApp::FillCommandBuffer(VkCommandBuffer commandBuffer, const size_t image
                             static_cast<uint32_t>(mRTDescriptorSets.size()), mRTDescriptorSets.data(),
                             0, 0);
 
-    // our shader binding table layout:
-    // |[ raygen ]|[closest hit]|[shadow closest hit]|[miss]|[shadow miss]|
-    // | 0        | 1           | 2                  | 3    | 4           |
-
-    VkBuffer sbtBuffer = mShaderBindingTable.GetBuffer();
     vkCmdTraceRaysNVX(commandBuffer,
-                      sbtBuffer, 0,
-                      sbtBuffer, 3 * mRTProps.shaderHeaderSize, mRTProps.shaderHeaderSize,
-                      sbtBuffer, 1 * mRTProps.shaderHeaderSize, mRTProps.shaderHeaderSize,
+                      mSBT.GetSBTBuffer(), mSBT.GetRaygenOffset(),
+                      mSBT.GetSBTBuffer(), mSBT.GetMissGroupsOffset(), mSBT.GetGroupsStride(),
+                      mSBT.GetSBTBuffer(), mSBT.GetHitGroupsOffset(), mSBT.GetGroupsStride(),
                       mSettings.resolutionX, mSettings.resolutionY);
 }
 
@@ -704,7 +699,7 @@ void RtxApp::CreateDescriptorSetsLayouts() {
     CHECK_VK_ERROR(error, L"vkCreateDescriptorSetLayout");
 }
 
-void RtxApp::CreateRaytracingPipeline() {
+void RtxApp::CreateRaytracingPipelineAndSBT() {
     VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
     pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutCreateInfo.pNext = nullptr;
@@ -725,29 +720,24 @@ void RtxApp::CreateRaytracingPipeline() {
     shadowChit.LoadFromFile((sShadersFolder + "shadow_ray_chit.bin").c_str());
     shadowMiss.LoadFromFile((sShadersFolder + "shadow_ray_miss.bin").c_str());
 
-    std::vector<VkPipelineShaderStageCreateInfo> shaderStages({
-        rayGenShader.GetShaderStage(VK_SHADER_STAGE_RAYGEN_BIT_NVX),
-        rayChitShader.GetShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NVX),
-        shadowChit.GetShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NVX),
-        rayMissShader.GetShaderStage(VK_SHADER_STAGE_MISS_BIT_NVX),
-        shadowMiss.GetShaderStage(VK_SHADER_STAGE_MISS_BIT_NVX)
-    });
+    mSBT.Initialize(2, 2, mRTProps.shaderHeaderSize);
 
-    // here are our groups map:
-    // group 0 : raygen
-    // group 1 : closest hit
-    // group 2 : shadow closest hit
-    // group 3 : miss
-    // group 4 : shadow miss
-    const uint32_t groupNumbers[] = { 0, 1, 2, 3, 4 };
+    mSBT.SetRaygenStage(rayGenShader.GetShaderStage(VK_SHADER_STAGE_RAYGEN_BIT_NVX));
+
+    mSBT.AddStageToHitGroup({ rayChitShader.GetShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NVX) }, SWS_PRIMARY_HIT_SHADERS_IDX);
+    mSBT.AddStageToHitGroup({ shadowChit.GetShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NVX) }, SWS_SHADOW_HIT_SHADERS_IDX);
+
+    mSBT.AddStageToMissGroup(rayMissShader.GetShaderStage(VK_SHADER_STAGE_MISS_BIT_NVX), SWS_PRIMARY_MISS_SHADERS_IDX);
+    mSBT.AddStageToMissGroup(shadowMiss.GetShaderStage(VK_SHADER_STAGE_MISS_BIT_NVX), SWS_SHADOW_MISS_SHADERS_IDX);
+
 
     VkRaytracingPipelineCreateInfoNVX rayPipelineInfo;
     rayPipelineInfo.sType = VK_STRUCTURE_TYPE_RAYTRACING_PIPELINE_CREATE_INFO_NVX;
     rayPipelineInfo.pNext = nullptr;
     rayPipelineInfo.flags = 0;
-    rayPipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-    rayPipelineInfo.pStages = shaderStages.data();
-    rayPipelineInfo.pGroupNumbers = groupNumbers;
+    rayPipelineInfo.stageCount = mSBT.GetNumStages();
+    rayPipelineInfo.pStages = mSBT.GetStages();
+    rayPipelineInfo.pGroupNumbers = mSBT.GetGroupNumbers();
     rayPipelineInfo.maxRecursionDepth = 1;
     rayPipelineInfo.layout = mRTPipelineLayout;
     rayPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -755,19 +745,8 @@ void RtxApp::CreateRaytracingPipeline() {
 
     error = vkCreateRaytracingPipelinesNVX(mDevice, nullptr, 1, &rayPipelineInfo, nullptr, &mRTPipeline);
     CHECK_VK_ERROR(error, "vkCreateRaytracingPipelinesNVX");
-}
 
-void RtxApp::CreateShaderBindingTable() {
-    const uint32_t numGroups = 5; // !! should be same amount of groups we used to create mRTPipeline
-    const uint32_t shaderBindingTableSize = mRTProps.shaderHeaderSize * numGroups;
-
-    VkResult error = mShaderBindingTable.Create(shaderBindingTableSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    CHECK_VK_ERROR(error, "mShaderBindingTable.Create");
-
-    void* mem = mShaderBindingTable.Map(shaderBindingTableSize);
-    error = vkGetRaytracingShaderHandlesNVX(mDevice, mRTPipeline, 0, numGroups, shaderBindingTableSize, mem);
-    CHECK_VK_ERROR(error, L"vkGetRaytracingShaderHandleNV");
-    mShaderBindingTable.Unmap();
+    mSBT.CreateSBT(mDevice, mRTPipeline);
 }
 
 void RtxApp::UpdateDescriptorSets() {
@@ -939,7 +918,6 @@ void RtxApp::UpdateDescriptorSets() {
 
     ///////////////////////////////////////////////////////////
 
-
     Array<VkWriteDescriptorSet> descriptorWrites({
         accelerationStructureWrite,
         resultImageWrite,
@@ -955,4 +933,153 @@ void RtxApp::UpdateDescriptorSets() {
     });
 
     vkUpdateDescriptorSets(mDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, VK_NULL_HANDLE);
+}
+
+
+// SBT Helper class
+
+SBTHelper::SBTHelper()
+    : mShaderHeaderSize(0u)
+    , mNumHitGroups(0u)
+    , mNumMissGroups(0u) {
+}
+
+void SBTHelper::Initialize(const uint32_t numHitGroups, const uint32_t numMissGroups, const uint32_t shaderHeaderSize) {
+    mShaderHeaderSize = shaderHeaderSize;
+    mNumHitGroups = numHitGroups;
+    mNumMissGroups = numMissGroups;
+
+    mNumHitShaders.resize(numHitGroups, 0u);
+    mNumMissShaders.resize(numMissGroups, 0u);
+
+    mStages.clear();
+    mGroupNumbers.clear();
+}
+
+void SBTHelper::Destroy() {
+    mNumHitShaders.clear();
+    mNumMissShaders.clear();
+    mStages.clear();
+    mGroupNumbers.clear();
+
+    mSBT.Destroy();
+}
+
+void SBTHelper::SetRaygenStage(const VkPipelineShaderStageCreateInfo& stage) {
+    // this shader stage should go first!
+    assert(mStages.empty());
+    mStages.push_back(stage);
+    mGroupNumbers.push_back(0); // group 0 is always for raygen
+}
+
+void SBTHelper::AddStageToHitGroup(const Array<VkPipelineShaderStageCreateInfo>& stages, const uint32_t groupIndex) {
+    // raygen stage should go first!
+    assert(!mStages.empty());
+
+    assert(groupIndex < mNumHitShaders.size());
+    assert(!stages.empty() && stages.size() <= 3);// only 3 hit shaders per group (intersection, any-hit and closest-hit)
+    assert(mNumHitShaders[groupIndex] == 0);
+
+    uint32_t offset = 1; // there's always raygen shader
+
+    for (uint32_t i = 0; i <= groupIndex; ++i) {
+        offset += mNumHitShaders[i];
+    }
+
+    auto itStage = mStages.begin() + offset;
+    mStages.insert(itStage, stages.begin(), stages.end());
+
+    const uint32_t groupNumber = groupIndex + 1; // group 0 is always for raygen
+    auto itNumber = mGroupNumbers.begin() + offset;
+    for (size_t i = 0; i < stages.size(); ++i, ++itNumber) {
+        itNumber = mGroupNumbers.insert(itNumber, groupNumber);
+    }
+
+    mNumHitShaders[groupIndex] += static_cast<uint32_t>(stages.size());
+}
+
+void SBTHelper::AddStageToMissGroup(const VkPipelineShaderStageCreateInfo& stage, const uint32_t groupIndex) {
+    // raygen stage should go first!
+    assert(!mStages.empty());
+
+    assert(groupIndex < mNumMissShaders.size());
+    assert(mNumMissShaders[groupIndex] == 0); // only 1 miss shader per group    
+
+    uint32_t offset = 1; // there's always raygen shader
+
+    // now skip all hit shaders
+    for (const uint32_t numHitShader : mNumHitShaders) {
+        offset += numHitShader;
+    }
+
+    for (uint32_t i = 0; i <= groupIndex; ++i) {
+        offset += mNumMissShaders[i];
+    }
+
+    auto itWhere = mStages.begin() + offset;
+    mStages.insert(itWhere, stage);
+
+    const uint32_t groupNumber = groupIndex + 1 + mNumHitGroups; // group 0 is always for raygen, then go hit shaders
+    auto itNumber = mGroupNumbers.begin() + offset;
+    mGroupNumbers.insert(itNumber, groupNumber);
+
+    mNumMissShaders[groupIndex]++;
+}
+
+uint32_t SBTHelper::GetGroupsStride() const {
+    return mShaderHeaderSize;
+}
+
+uint32_t SBTHelper::GetNumGroups() const {
+    return 1 + mNumHitGroups + mNumMissGroups;
+}
+
+uint32_t SBTHelper::GetRaygenOffset() const {
+    return 0;
+}
+
+uint32_t SBTHelper::GetHitGroupsOffset() const {
+    return 1 * mShaderHeaderSize;
+}
+
+uint32_t SBTHelper::GetMissGroupsOffset() const {
+    return (1 + mNumHitGroups) * mShaderHeaderSize;
+}
+
+uint32_t SBTHelper::GetNumStages() const {
+    return static_cast<uint32_t>(mStages.size());
+}
+
+const VkPipelineShaderStageCreateInfo* SBTHelper::GetStages() const {
+    return mStages.data();
+}
+
+const uint32_t* SBTHelper::GetGroupNumbers() const {
+    return mGroupNumbers.data();
+}
+
+uint32_t SBTHelper::GetSBTSize() const {
+    return this->GetNumGroups() * mShaderHeaderSize;
+}
+
+bool SBTHelper::CreateSBT(VkDevice device, VkPipeline rtPipeline) {
+    const size_t sbtSize = this->GetSBTSize();
+
+    VkResult error = mSBT.Create(sbtSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    CHECK_VK_ERROR(error, "mSBT.Create");
+
+    if (VK_SUCCESS != error) {
+        return false;
+    }
+
+    void* mem = mSBT.Map();
+    error = vkGetRaytracingShaderHandlesNVX(device, rtPipeline, 0, this->GetNumGroups(), sbtSize, mem);
+    CHECK_VK_ERROR(error, L"vkGetRaytracingShaderHandleNV");
+    mSBT.Unmap();
+
+    return (VK_SUCCESS == error);
+}
+
+VkBuffer SBTHelper::GetSBTBuffer() const {
+    return mSBT.GetBuffer();
 }

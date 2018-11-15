@@ -41,15 +41,11 @@ void main() {
     vec3 direction = CalcRayDir(uv, aspect);
 
     const uint rayFlags = gl_RayFlagsOpaqueNVX;
+    const uint shadowRayFlags = gl_RayFlagsOpaqueNVX | gl_RayFlagsTerminateOnFirstHitNVX;
+
     const uint cullMask = 0xFF;
 
-    const uint primaryRecordOffset = 0;
     const uint stbRecordStride = 0;
-    const uint primaryMissIndex = 0;
-
-    const uint shadowRayFlags = gl_RayFlagsOpaqueNVX | gl_RayFlagsTerminateOnFirstHitNVX;
-    const uint shadowRecordOffset = 1;
-    const uint shadowMissIndex = 1;
 
     const float tmin = 0.0f;
     const float tmax = Params.camNearFarFov.y;
@@ -60,9 +56,9 @@ void main() {
         traceNVX(Scene,
                  rayFlags,
                  cullMask,
-                 primaryRecordOffset,
+                 SWS_PRIMARY_HIT_SHADERS_IDX,
                  stbRecordStride,
-                 primaryMissIndex,
+                 SWS_PRIMARY_MISS_SHADERS_IDX,
                  origin,
                  tmin,
                  direction,
@@ -104,9 +100,9 @@ void main() {
                 traceNVX(Scene,
                          rayFlags,
                          cullMask,
-                         shadowRecordOffset,
+                         SWS_SHADOW_HIT_SHADERS_IDX,
                          stbRecordStride,
-                         shadowMissIndex,
+                         SWS_SHADOW_MISS_SHADERS_IDX,
                          shadowRayOrigin,
                          0.0f,
                          toLight,
