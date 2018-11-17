@@ -32,7 +32,7 @@
 #define SWS_LOC_HIT_ATTRIBS             1
 #define SWS_LOC_SHADOW_RAY              2
 
-#define SWS_MAX_RECURSION               5
+#define SWS_MAX_RECURSION               10
 
 #define OBJECT_ID_BUNNY                 0.0f
 #define OBJECT_ID_PLANE                 1.0f
