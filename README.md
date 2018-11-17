@@ -11,3 +11,6 @@ Simple Vulkan raytracing tutorials
 
 ## Happy Triangle!
 ![Happy Triangle!](https://user-images.githubusercontent.com/7016607/47895234-aa84c780-de3d-11e8-8715-4b156d67b783.png)
+
+## Chrome teapot and a glass bunny
+![Teapot and a bunny](https://user-images.githubusercontent.com/7016607/48533170-60560a00-e871-11e8-8b3a-0096907be5fe.png)
