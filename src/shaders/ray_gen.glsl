@@ -14,7 +14,7 @@ layout(set = SWS_CAMDATA_SET,      binding = SWS_CAMDATA_BINDING, std140)     un
 layout(location = SWS_LOC_PRIMARY_RAY) rayPayloadNVX RayPayload PrimaryRay;
 layout(location = SWS_LOC_SHADOW_RAY)  rayPayloadNVX ShadowRayPayload ShadowRay;
 
-const float kBunnyRefractionIndex = 1.0f / 1.52f; // glass
+const float kBunnyRefractionIndex = 1.0f / 1.31f; // ice
 
 vec3 CalcRayDir(vec2 screenUV, float aspect) {
     vec3 u = Params.camSide.xyz;
@@ -84,13 +84,23 @@ void main() {
                 origin = hitPos + hitNormal * 0.001f;
                 direction = reflect(direction, hitNormal);
             } else if (objectId == OBJECT_ID_BUNNY) {
-                // our bunny is glass, so refract and continue
+                // our bunny is made of ice, so refract and continue
 
                 const float NdotD = dot(hitNormal, direction);
-                const vec3 refrNormal = (NdotD > 0.0f) ? -hitNormal : hitNormal;
+
+                vec3 refrNormal = hitNormal;
+                float refrEta;
+
+                if(NdotD > 0.0f) {
+                    refrNormal = -hitNormal;
+                    refrEta = 1.0f / kBunnyRefractionIndex;
+                } else {
+                    refrNormal = hitNormal;
+                    refrEta = kBunnyRefractionIndex;
+                }
 
                 origin = hitPos + direction * 0.001f;
-                direction = refract(direction, refrNormal, kBunnyRefractionIndex);
+                direction = refract(direction, refrNormal, refrEta);
             } else {
                 // we hit diffuse primitive - simple lambertian
 
