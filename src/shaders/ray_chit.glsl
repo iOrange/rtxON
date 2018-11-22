@@ -1,5 +1,5 @@
 #version 460
-#extension GL_NVX_raytracing : require
+#extension GL_NV_ray_tracing : require
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_nonuniform_qualifier : require
 
@@ -19,19 +19,19 @@ layout(set = SWS_FACES_SET, binding = 0, std430) readonly buffer FacesBuffer {
 
 layout(set = SWS_TEXTURES_SET, binding = 0) uniform sampler2D TexturesArray[];
 
-layout(location = SWS_LOC_PRIMARY_RAY) rayPayloadInNVX RayPayload PrimaryRay;
-layout(location = SWS_LOC_HIT_ATTRIBS) hitAttributeNVX vec2 HitAttribs;
+layout(location = SWS_LOC_PRIMARY_RAY) rayPayloadInNV RayPayload PrimaryRay;
+                                       hitAttributeNV vec2 HitAttribs;
 
 void main() {
     const vec3 barycentrics = vec3(1.0f - HitAttribs.x - HitAttribs.y, HitAttribs.x, HitAttribs.y);
 
-    const uint matID = MatIDsArray[nonuniformEXT(gl_InstanceCustomIndexNVX)].MatIDs[gl_PrimitiveID];
+    const uint matID = MatIDsArray[nonuniformEXT(gl_InstanceCustomIndexNV)].MatIDs[gl_PrimitiveID];
 
-    const uvec4 face = FacesArray[nonuniformEXT(gl_InstanceCustomIndexNVX)].Faces[gl_PrimitiveID];
+    const uvec4 face = FacesArray[nonuniformEXT(gl_InstanceCustomIndexNV)].Faces[gl_PrimitiveID];
 
-    VertexAttribute v0 = AttribsArray[nonuniformEXT(gl_InstanceCustomIndexNVX)].VertexAttribs[int(face.x)];
-    VertexAttribute v1 = AttribsArray[nonuniformEXT(gl_InstanceCustomIndexNVX)].VertexAttribs[int(face.y)];
-    VertexAttribute v2 = AttribsArray[nonuniformEXT(gl_InstanceCustomIndexNVX)].VertexAttribs[int(face.z)];
+    VertexAttribute v0 = AttribsArray[nonuniformEXT(gl_InstanceCustomIndexNV)].VertexAttribs[int(face.x)];
+    VertexAttribute v1 = AttribsArray[nonuniformEXT(gl_InstanceCustomIndexNV)].VertexAttribs[int(face.y)];
+    VertexAttribute v2 = AttribsArray[nonuniformEXT(gl_InstanceCustomIndexNV)].VertexAttribs[int(face.z)];
 
     // interpolate our vertex attribs
     const vec3 normal = normalize(BaryLerp(v0.normal.xyz, v1.normal.xyz, v2.normal.xyz, barycentrics));
@@ -39,8 +39,8 @@ void main() {
 
     const vec3 texel = textureLod(TexturesArray[nonuniformEXT(matID)], uv, 0.0f).rgb;
 
-    const float objId = float(gl_InstanceCustomIndexNVX);
+    const float objId = float(gl_InstanceCustomIndexNV);
 
-    PrimaryRay.colorAndDist = vec4(texel, gl_HitTNVX);
+    PrimaryRay.colorAndDist = vec4(texel, gl_HitTNV);
     PrimaryRay.normalAndObjId = vec4(normal, objId);
 }
