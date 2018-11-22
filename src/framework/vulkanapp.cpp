@@ -292,7 +292,8 @@ bool VulkanApp::InitializeDevicesAndQueues() {
 
     Array<const char*> deviceExtensions({ VK_KHR_SWAPCHAIN_EXTENSION_NAME });
     if (mSettings.supportRaytracing) {
-        deviceExtensions.push_back(VK_NVX_RAYTRACING_EXTENSION_NAME);
+        //deviceExtensions.push_back("VK_NVX_raytracing");
+        deviceExtensions.push_back(VK_NV_RAY_TRACING_EXTENSION_NAME);
     }
 
     VkPhysicalDeviceDescriptorIndexingFeaturesEXT descriptorIndexing = { };
@@ -333,10 +334,10 @@ bool VulkanApp::InitializeDevicesAndQueues() {
 
     // if raytracing support requested - let's get raytracing properties to know shader header size and max recursion
     if (mSettings.supportRaytracing) {
-        mRTProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAYTRACING_PROPERTIES_NVX;
+        mRTProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV;
         mRTProps.pNext = nullptr;
         mRTProps.maxRecursionDepth = 0;
-        mRTProps.shaderHeaderSize = 0;
+        mRTProps.shaderGroupHandleSize = 0;
 
         VkPhysicalDeviceProperties2 devProps;
         devProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
