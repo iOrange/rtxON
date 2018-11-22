@@ -444,7 +444,7 @@ void RtxApp::CreateScene() {
         geometry.geometry.triangles.transformOffset = 0;
         geometry.geometry.aabbs = { };
         geometry.geometry.aabbs.sType = VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV;
-        geometry.flags = 0;
+        geometry.flags = VK_GEOMETRY_OPAQUE_BIT_NV;
 
 
         // here we create our bottom-level acceleration structure for our happy triangle
@@ -527,6 +527,9 @@ void RtxApp::CreateScene() {
 
     // build bottom-level AS
     for (size_t i = 0; i < numMeshes; ++i) {
+        mScene.meshes[i].blas.accelerationStructureInfo.instanceCount = 0;
+        mScene.meshes[i].blas.accelerationStructureInfo.geometryCount = 1;
+        mScene.meshes[i].blas.accelerationStructureInfo.pGeometries = &geometries[i];
         vkCmdBuildAccelerationStructureNV( commandBuffer, &mScene.meshes[i].blas.accelerationStructureInfo, 
                                            VK_NULL_HANDLE, 0, VK_FALSE,
                                            mScene.meshes[i].blas.accelerationStructure, VK_NULL_HANDLE,
@@ -536,6 +539,9 @@ void RtxApp::CreateScene() {
     }
 
     // build top-level AS
+    mScene.topLevelAS.accelerationStructureInfo.instanceCount = static_cast<uint32_t>(instances.size());
+    mScene.topLevelAS.accelerationStructureInfo.geometryCount = 0;
+    mScene.topLevelAS.accelerationStructureInfo.pGeometries = nullptr;
     vkCmdBuildAccelerationStructureNV(commandBuffer, &mScene.topLevelAS.accelerationStructureInfo,
                                        instancesBuffer.GetBuffer(), 0, VK_FALSE,
                                        mScene.topLevelAS.accelerationStructure, VK_NULL_HANDLE,

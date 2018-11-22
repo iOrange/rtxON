@@ -45,7 +45,7 @@ void main() {
 
     const uint cullMask = 0xFF;
 
-    const uint stbRecordStride = 0;
+    const uint stbRecordStride = 1;
 
     const float tmin = 0.0f;
     const float tmax = Params.camNearFarFov.y;
