@@ -7,3 +7,6 @@
 [submodule "external/tinyobjloader"]
 	path = external/tinyobjloader
 	url = https://github.com/syoyo/tinyobjloader.git
+[submodule "external/vulkan"]
+	path = external/vulkan
+	url = https://github.com/KhronosGroup/Vulkan-Headers.git

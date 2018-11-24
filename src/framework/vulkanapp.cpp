@@ -292,7 +292,6 @@ bool VulkanApp::InitializeDevicesAndQueues() {
 
     Array<const char*> deviceExtensions({ VK_KHR_SWAPCHAIN_EXTENSION_NAME });
     if (mSettings.supportRaytracing) {
-        //deviceExtensions.push_back("VK_NVX_raytracing");
         deviceExtensions.push_back(VK_NV_RAY_TRACING_EXTENSION_NAME);
     }
 

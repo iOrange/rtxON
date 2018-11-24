@@ -12,7 +12,7 @@ project "rtxON"
         "external/stb",
         "external/tinyobjloader",
         "external/volk",
-        "external/vulkan/Include",
+        "external/vulkan/include",
         "src"
     }
     files {

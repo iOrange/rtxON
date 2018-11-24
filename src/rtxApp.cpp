@@ -193,22 +193,22 @@ bool RtxApp::CreateAS(const VkAccelerationStructureTypeNV type,
                       const uint32_t instanceCount,
                       RTAccelerationStructure& _as) {
 
-    VkAccelerationStructureInfoNV& accelerationStructureInfoNV = _as.accelerationStructureInfo;
-    accelerationStructureInfoNV.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
-    accelerationStructureInfoNV.pNext = nullptr;
-    accelerationStructureInfoNV.type = type;
-    accelerationStructureInfoNV.flags = 0;
-    accelerationStructureInfoNV.geometryCount = geometryCount;
-    accelerationStructureInfoNV.instanceCount = instanceCount;
-    accelerationStructureInfoNV.pGeometries = geometries;
-
-    VkAccelerationStructureCreateInfoNV accelerationStructureInfo;
-    accelerationStructureInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV;
+    VkAccelerationStructureInfoNV& accelerationStructureInfo = _as.accelerationStructureInfo;
+    accelerationStructureInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
     accelerationStructureInfo.pNext = nullptr;
-    accelerationStructureInfo.info = accelerationStructureInfoNV;
-    accelerationStructureInfo.compactedSize = 0;
+    accelerationStructureInfo.type = type;
+    accelerationStructureInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_NV;
+    accelerationStructureInfo.geometryCount = geometryCount;
+    accelerationStructureInfo.instanceCount = instanceCount;
+    accelerationStructureInfo.pGeometries = geometries;
 
-    VkResult error = vkCreateAccelerationStructureNV(mDevice, &accelerationStructureInfo, nullptr, &_as.accelerationStructure);
+    VkAccelerationStructureCreateInfoNV accelerationStructureCreateInfo;
+    accelerationStructureCreateInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV;
+    accelerationStructureCreateInfo.pNext = nullptr;
+    accelerationStructureCreateInfo.info = accelerationStructureInfo;
+    accelerationStructureCreateInfo.compactedSize = 0;
+
+    VkResult error = vkCreateAccelerationStructureNV(mDevice, &accelerationStructureCreateInfo, nullptr, &_as.accelerationStructure);
     if (VK_SUCCESS != error) {
         CHECK_VK_ERROR(error, "vkCreateAccelerationStructureNV");
         return false;
@@ -980,12 +980,14 @@ void SBTHelper::SetRaygenStage(const VkPipelineShaderStageCreateInfo& stage) {
     assert(mStages.empty());
     mStages.push_back(stage);
 
-    VkRayTracingShaderGroupCreateInfoNV groupInfo = {};
+    VkRayTracingShaderGroupCreateInfoNV groupInfo;
     groupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV;
     groupInfo.pNext = nullptr;
     groupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV;
     groupInfo.generalShader = 0;
-    groupInfo.closestHitShader = groupInfo.anyHitShader = groupInfo.intersectionShader = (~0u);
+    groupInfo.closestHitShader = VK_SHADER_UNUSED_NV;
+    groupInfo.anyHitShader = VK_SHADER_UNUSED_NV;
+    groupInfo.intersectionShader = VK_SHADER_UNUSED_NV;
     mGroups.push_back(groupInfo); // group 0 is always for raygen
 }
 
@@ -1006,18 +1008,24 @@ void SBTHelper::AddStageToHitGroup(const Array<VkPipelineShaderStageCreateInfo>&
     auto itStage = mStages.begin() + offset;
     mStages.insert(itStage, stages.begin(), stages.end());
 
-    VkRayTracingShaderGroupCreateInfoNV groupInfo = {};
+    VkRayTracingShaderGroupCreateInfoNV groupInfo;
     groupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV;
     groupInfo.pNext = nullptr;
-    groupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV;
-    groupInfo.generalShader = groupInfo.closestHitShader = groupInfo.anyHitShader = groupInfo.intersectionShader = (~0u);
+    groupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_NV;
+    groupInfo.generalShader = VK_SHADER_UNUSED_NV;
+    groupInfo.closestHitShader = VK_SHADER_UNUSED_NV;
+    groupInfo.anyHitShader = VK_SHADER_UNUSED_NV;
+    groupInfo.intersectionShader = VK_SHADER_UNUSED_NV;
 
     for (size_t i = 0; i < stages.size(); i++) {
-        const auto StageIdx = offset+i;
-        if (stages[i].stage == VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV || stages[i].stage == VK_SHADER_STAGE_ANY_HIT_BIT_NV) groupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_NV;
-        if (stages[i].stage == VK_SHADER_STAGE_RAYGEN_BIT_NV || stages[i].stage == VK_SHADER_STAGE_MISS_BIT_NV) groupInfo.generalShader = StageIdx;
-        if (stages[i].stage == VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV) groupInfo.closestHitShader = StageIdx;
-        if (stages[i].stage == VK_SHADER_STAGE_ANY_HIT_BIT_NV) groupInfo.anyHitShader = StageIdx;
+        const VkPipelineShaderStageCreateInfo& stageInfo = stages[i];
+        const uint32_t shaderIdx = static_cast<uint32_t>(offset + i);
+
+        if (stageInfo.stage == VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV) {
+            groupInfo.closestHitShader = shaderIdx;
+        } else if (stageInfo.stage == VK_SHADER_STAGE_ANY_HIT_BIT_NV) {
+            groupInfo.anyHitShader = shaderIdx;
+        }
     };
 
     mGroups.insert((mGroups.begin() + 1 + groupIndex), groupInfo);
@@ -1051,9 +1059,9 @@ void SBTHelper::AddStageToMissGroup(const VkPipelineShaderStageCreateInfo& stage
     groupInfo.pNext = nullptr;
     groupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV;
     groupInfo.generalShader = offset;
-    groupInfo.closestHitShader = (~0u);
-    groupInfo.anyHitShader = (~0u);
-    groupInfo.intersectionShader = (~0u);
+    groupInfo.closestHitShader = VK_SHADER_UNUSED_NV;
+    groupInfo.anyHitShader = VK_SHADER_UNUSED_NV;
+    groupInfo.intersectionShader = VK_SHADER_UNUSED_NV;
 
     // group 0 is always for raygen, then go hit shaders
     mGroups.insert((mGroups.begin() + (groupIndex + 1 + mNumHitGroups)), groupInfo);
