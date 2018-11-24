@@ -64,14 +64,14 @@ void RtxApp::InitApp() {
 
 void RtxApp::FreeResources() {
     for (RTMesh& mesh : mScene.meshes) {
-        vkDestroyAccelerationStructureNVX(mDevice, mesh.blas.accelerationStructure, nullptr);
+        vkDestroyAccelerationStructureNV(mDevice, mesh.blas.accelerationStructure, nullptr);
         vkFreeMemory(mDevice, mesh.blas.memory, nullptr);
     }
     mScene.meshes.clear();
     mScene.materials.clear();
 
     if (mScene.topLevelAS.accelerationStructure) {
-        vkDestroyAccelerationStructureNVX(mDevice, mScene.topLevelAS.accelerationStructure, nullptr);
+        vkDestroyAccelerationStructureNV(mDevice, mScene.topLevelAS.accelerationStructure, nullptr);
         mScene.topLevelAS.accelerationStructure = VK_NULL_HANDLE;
     }
     if (mScene.topLevelAS.memory) {
@@ -104,20 +104,21 @@ void RtxApp::FreeResources() {
 
 void RtxApp::FillCommandBuffer(VkCommandBuffer commandBuffer, const size_t imageIndex) {
     vkCmdBindPipeline(commandBuffer,
-                      VK_PIPELINE_BIND_POINT_RAYTRACING_NVX,
+                      VK_PIPELINE_BIND_POINT_RAY_TRACING_NV,
                       mRTPipeline);
 
     vkCmdBindDescriptorSets(commandBuffer,
-                            VK_PIPELINE_BIND_POINT_RAYTRACING_NVX,
+                            VK_PIPELINE_BIND_POINT_RAY_TRACING_NV,
                             mRTPipelineLayout, 0,
                             static_cast<uint32_t>(mRTDescriptorSets.size()), mRTDescriptorSets.data(),
                             0, 0);
 
-    vkCmdTraceRaysNVX(commandBuffer,
+    vkCmdTraceRaysNV(commandBuffer,
                       mSBT.GetSBTBuffer(), mSBT.GetRaygenOffset(),
                       mSBT.GetSBTBuffer(), mSBT.GetMissGroupsOffset(), mSBT.GetGroupsStride(),
                       mSBT.GetSBTBuffer(), mSBT.GetHitGroupsOffset(), mSBT.GetGroupsStride(),
-                      mSettings.resolutionX, mSettings.resolutionY);
+                      VK_NULL_HANDLE, 0, 0,
+                      mSettings.resolutionX, mSettings.resolutionY, 1u);
 }
 
 void RtxApp::OnMouseMove(const float x, const float y) {
@@ -186,35 +187,41 @@ void RtxApp::Update(const size_t, const float dt) {
 
 
 
-bool RtxApp::CreateAS(const VkAccelerationStructureTypeNVX type,
+bool RtxApp::CreateAS(const VkAccelerationStructureTypeNV type,
                       const uint32_t geometryCount,
-                      const VkGeometryNVX* geometries,
+                      const VkGeometryNV* geometries,
                       const uint32_t instanceCount,
                       RTAccelerationStructure& _as) {
 
-    VkAccelerationStructureCreateInfoNVX accelerationStructureInfo;
-    accelerationStructureInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NVX;
-    accelerationStructureInfo.pNext = nullptr;
-    accelerationStructureInfo.type = type;
-    accelerationStructureInfo.flags = 0;
-    accelerationStructureInfo.compactedSize = 0;
-    accelerationStructureInfo.instanceCount = instanceCount;
-    accelerationStructureInfo.geometryCount = geometryCount;
-    accelerationStructureInfo.pGeometries = geometries;
+    VkAccelerationStructureInfoNV& accelerationStructureInfoNV = _as.accelerationStructureInfo;
+    accelerationStructureInfoNV.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
+    accelerationStructureInfoNV.pNext = nullptr;
+    accelerationStructureInfoNV.type = type;
+    accelerationStructureInfoNV.flags = 0;
+    accelerationStructureInfoNV.geometryCount = geometryCount;
+    accelerationStructureInfoNV.instanceCount = instanceCount;
+    accelerationStructureInfoNV.pGeometries = geometries;
 
-    VkResult error = vkCreateAccelerationStructureNVX(mDevice, &accelerationStructureInfo, nullptr, &_as.accelerationStructure);
+    VkAccelerationStructureCreateInfoNV accelerationStructureInfo;
+    accelerationStructureInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV;
+    accelerationStructureInfo.pNext = nullptr;
+    accelerationStructureInfo.info = accelerationStructureInfoNV;
+    accelerationStructureInfo.compactedSize = 0;
+
+    VkResult error = vkCreateAccelerationStructureNV(mDevice, &accelerationStructureInfo, nullptr, &_as.accelerationStructure);
     if (VK_SUCCESS != error) {
         CHECK_VK_ERROR(error, "vkCreateAccelerationStructureNV");
         return false;
     }
 
-    VkAccelerationStructureMemoryRequirementsInfoNVX memoryRequirementsInfo;
-    memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX;
+    VkAccelerationStructureMemoryRequirementsInfoNV memoryRequirementsInfo;
+    memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
     memoryRequirementsInfo.pNext = nullptr;
+    memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_OBJECT_NV;
     memoryRequirementsInfo.accelerationStructure = _as.accelerationStructure;
 
     VkMemoryRequirements2 memoryRequirements;
-    vkGetAccelerationStructureMemoryRequirementsNVX(mDevice, &memoryRequirementsInfo, &memoryRequirements);
+    vkGetAccelerationStructureMemoryRequirementsNV(mDevice, &memoryRequirementsInfo, &memoryRequirements);
 
     VkMemoryAllocateInfo memoryAllocateInfo;
     memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -228,8 +235,8 @@ bool RtxApp::CreateAS(const VkAccelerationStructureTypeNVX type,
         return false;
     }
 
-    VkBindAccelerationStructureMemoryInfoNVX bindInfo;
-    bindInfo.sType = VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NVX;
+    VkBindAccelerationStructureMemoryInfoNV bindInfo;
+    bindInfo.sType = VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV;
     bindInfo.pNext = nullptr;
     bindInfo.accelerationStructure = _as.accelerationStructure;
     bindInfo.memory = _as.memory;
@@ -237,13 +244,13 @@ bool RtxApp::CreateAS(const VkAccelerationStructureTypeNVX type,
     bindInfo.deviceIndexCount = 0;
     bindInfo.pDeviceIndices = nullptr;
 
-    error = vkBindAccelerationStructureMemoryNVX(mDevice, 1, &bindInfo);
+    error = vkBindAccelerationStructureMemoryNV(mDevice, 1, &bindInfo);
     if (VK_SUCCESS != error) {
         CHECK_VK_ERROR(error, "vkBindAccelerationStructureMemoryNVX");
         return false;
     }
 
-    error = vkGetAccelerationStructureHandleNVX(mDevice, _as.accelerationStructure, sizeof(uint64_t), &_as.handle);
+    error = vkGetAccelerationStructureHandleNV(mDevice, _as.accelerationStructure, sizeof(uint64_t), &_as.handle);
     if (VK_SUCCESS != error) {
         CHECK_VK_ERROR(error, "vkGetAccelerationStructureHandleNVX");
         return false;
@@ -286,19 +293,19 @@ void RtxApp::LoadSceneGeometry() {
             const size_t attribsBufferSize = numVertices * sizeof(VertexAttribute);
             const size_t matIDsBufferSize = numFaces * sizeof(uint32_t);
 
-            VkResult error = mesh.positions.Create(positionsBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            VkResult error = mesh.positions.Create(positionsBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_RAY_TRACING_BIT_NV, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
             CHECK_VK_ERROR(error, "mesh.positions.Create");
 
-            error = mesh.indices.Create(indicesBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            error = mesh.indices.Create(indicesBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_RAY_TRACING_BIT_NV, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
             CHECK_VK_ERROR(error, "mesh.indices.Create");
 
-            error = mesh.faces.Create(facesBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            error = mesh.faces.Create(facesBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_RAY_TRACING_BIT_NV, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
             CHECK_VK_ERROR(error, "mesh.faces.Create");
 
-            error = mesh.attribs.Create(attribsBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            error = mesh.attribs.Create(attribsBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_RAY_TRACING_BIT_NV, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
             CHECK_VK_ERROR(error, "mesh.attribs.Create");
 
-            error = mesh.matIDs.Create(matIDsBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            error = mesh.matIDs.Create(matIDsBufferSize, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_RAY_TRACING_BIT_NV, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
             CHECK_VK_ERROR(error, "mesh.matIDs.Create");
 
             vec3* positions = reinterpret_cast<vec3*>(mesh.positions.Map());
@@ -412,17 +419,17 @@ void RtxApp::CreateScene() {
 
     const size_t numMeshes = mScene.meshes.size();
 
-    Array<VkGeometryNVX> geometries(numMeshes);
+    Array<VkGeometryNV> geometries(numMeshes);
     Array<VkGeometryInstance> instances(numMeshes);
 
     for (size_t i = 0; i < numMeshes; ++i) {
         RTMesh& mesh = mScene.meshes[i];
-        VkGeometryNVX& geometry = geometries[i];
+        VkGeometryNV& geometry = geometries[i];
 
-        geometry.sType = VK_STRUCTURE_TYPE_GEOMETRY_NVX;
+        geometry.sType = VK_STRUCTURE_TYPE_GEOMETRY_NV;
         geometry.pNext = nullptr;
-        geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_NVX;
-        geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NVX;
+        geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_NV;
+        geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV;
         geometry.geometry.triangles.pNext = nullptr;
         geometry.geometry.triangles.vertexData = mesh.positions.GetBuffer();
         geometry.geometry.triangles.vertexOffset = 0;
@@ -436,12 +443,12 @@ void RtxApp::CreateScene() {
         geometry.geometry.triangles.transformData = VK_NULL_HANDLE;
         geometry.geometry.triangles.transformOffset = 0;
         geometry.geometry.aabbs = { };
-        geometry.geometry.aabbs.sType = VK_STRUCTURE_TYPE_GEOMETRY_AABB_NVX;
-        geometry.flags = 0;
+        geometry.geometry.aabbs.sType = VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV;
+        geometry.flags = VK_GEOMETRY_OPAQUE_BIT_NV;
 
 
         // here we create our bottom-level acceleration structure for our happy triangle
-        this->CreateAS(VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NVX, 1, &geometry, 0, mesh.blas);
+        this->CreateAS(VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NV, 1, &geometry, 0, mesh.blas);
 
 
         VkGeometryInstance& instance = instances[i];
@@ -449,13 +456,13 @@ void RtxApp::CreateScene() {
         instance.instanceId = static_cast<uint32_t>(i);
         instance.mask = 0xff;
         instance.instanceOffset = 0;
-        instance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NVX;
+        instance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NV;
         instance.accelerationStructureHandle = mesh.blas.handle;
     }
 
     // create an instance for our triangle
     vulkanhelpers::Buffer instancesBuffer;
-    VkResult error = instancesBuffer.Create(instances.size() * sizeof(VkGeometryInstance), VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VkResult error = instancesBuffer.Create(instances.size() * sizeof(VkGeometryInstance), VK_BUFFER_USAGE_RAY_TRACING_BIT_NV, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     CHECK_VK_ERROR(error, "instancesBuffer.Create");
 
     if (!instancesBuffer.UploadData(instances.data(), instancesBuffer.GetSize())) {
@@ -464,32 +471,34 @@ void RtxApp::CreateScene() {
 
 
     // and here we create out top-level acceleration structure that'll represent our scene
-    this->CreateAS(VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_NVX, 0, nullptr, 1, mScene.topLevelAS);
+    this->CreateAS(VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_NV, 0, nullptr, 1, mScene.topLevelAS);
 
     // now we have to build them
 
-    VkAccelerationStructureMemoryRequirementsInfoNVX memoryRequirementsInfo;
-    memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX;
+    VkAccelerationStructureMemoryRequirementsInfoNV memoryRequirementsInfo;
+    memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
     memoryRequirementsInfo.pNext = nullptr;
 
     VkDeviceSize maximumBlasSize = 0;
     for (const RTMesh& mesh : mScene.meshes) {
+        memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
         memoryRequirementsInfo.accelerationStructure = mesh.blas.accelerationStructure;
 
         VkMemoryRequirements2 memReqBLAS;
-        vkGetAccelerationStructureScratchMemoryRequirementsNVX(mDevice, &memoryRequirementsInfo, &memReqBLAS);
+        vkGetAccelerationStructureMemoryRequirementsNV(mDevice, &memoryRequirementsInfo, &memReqBLAS);
 
         maximumBlasSize = Max(maximumBlasSize, memReqBLAS.memoryRequirements.size);
     }
 
     VkMemoryRequirements2 memReqTLAS;
+    memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
     memoryRequirementsInfo.accelerationStructure = mScene.topLevelAS.accelerationStructure;
-    vkGetAccelerationStructureScratchMemoryRequirementsNVX(mDevice, &memoryRequirementsInfo, &memReqTLAS);
+    vkGetAccelerationStructureMemoryRequirementsNV(mDevice, &memoryRequirementsInfo, &memReqTLAS);
 
     const VkDeviceSize scratchBufferSize = Max(maximumBlasSize, memReqTLAS.memoryRequirements.size);
 
     vulkanhelpers::Buffer scratchBuffer;
-    error = scratchBuffer.Create(scratchBufferSize, VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    error = scratchBuffer.Create(scratchBufferSize, VK_BUFFER_USAGE_RAY_TRACING_BIT_NV, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     CHECK_VK_ERROR(error, "scratchBuffer.Create");
 
     VkCommandBufferAllocateInfo commandBufferAllocateInfo;
@@ -513,32 +522,32 @@ void RtxApp::CreateScene() {
     VkMemoryBarrier memoryBarrier;
     memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
     memoryBarrier.pNext = nullptr;
-    memoryBarrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NVX | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NVX;
-    memoryBarrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NVX | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NVX;
+    memoryBarrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV;
+    memoryBarrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV;
 
     // build bottom-level AS
     for (size_t i = 0; i < numMeshes; ++i) {
-        vkCmdBuildAccelerationStructureNVX(commandBuffer,
-                                           VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NVX,
-                                           0, VK_NULL_HANDLE, 0,
-                                           1, &geometries[i],
-                                           0, VK_FALSE,
+        mScene.meshes[i].blas.accelerationStructureInfo.instanceCount = 0;
+        mScene.meshes[i].blas.accelerationStructureInfo.geometryCount = 1;
+        mScene.meshes[i].blas.accelerationStructureInfo.pGeometries = &geometries[i];
+        vkCmdBuildAccelerationStructureNV( commandBuffer, &mScene.meshes[i].blas.accelerationStructureInfo, 
+                                           VK_NULL_HANDLE, 0, VK_FALSE,
                                            mScene.meshes[i].blas.accelerationStructure, VK_NULL_HANDLE,
                                            scratchBuffer.GetBuffer(), 0);
 
-        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_RAYTRACING_BIT_NVX, VK_PIPELINE_STAGE_RAYTRACING_BIT_NVX, 0, 1, &memoryBarrier, 0, 0, 0, 0);
+        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV, 0, 1, &memoryBarrier, 0, 0, 0, 0);
     }
 
     // build top-level AS
-    vkCmdBuildAccelerationStructureNVX(commandBuffer,
-                                       VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_NVX,
-                                       static_cast<uint32_t>(instances.size()), instancesBuffer.GetBuffer(), 0,
-                                       0, nullptr,
-                                       0, VK_FALSE,
+    mScene.topLevelAS.accelerationStructureInfo.instanceCount = static_cast<uint32_t>(instances.size());
+    mScene.topLevelAS.accelerationStructureInfo.geometryCount = 0;
+    mScene.topLevelAS.accelerationStructureInfo.pGeometries = nullptr;
+    vkCmdBuildAccelerationStructureNV(commandBuffer, &mScene.topLevelAS.accelerationStructureInfo,
+                                       instancesBuffer.GetBuffer(), 0, VK_FALSE,
                                        mScene.topLevelAS.accelerationStructure, VK_NULL_HANDLE,
                                        scratchBuffer.GetBuffer(), 0);
 
-    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_RAYTRACING_BIT_NVX, VK_PIPELINE_STAGE_RAYTRACING_BIT_NVX, 0, 1, &memoryBarrier, 0, 0, 0, 0);
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV, 0, 1, &memoryBarrier, 0, 0, 0, 0);
 
     vkEndCommandBuffer(commandBuffer);
 
@@ -559,7 +568,7 @@ void RtxApp::CreateScene() {
 }
 
 void RtxApp::CreateCamera() {
-    VkResult error = mCameraBuffer.Create(sizeof(UniformParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VkResult error = mCameraBuffer.Create(sizeof(UniformParams), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_RAY_TRACING_BIT_NV, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     CHECK_VK_ERROR(error, "mCameraBuffer.Create");
 
     mCamera.SetViewport({ 0, 0, static_cast<int>(mSettings.resolutionX), static_cast<int>(mSettings.resolutionY) });
@@ -606,23 +615,23 @@ void RtxApp::CreateDescriptorSetsLayouts() {
 
     VkDescriptorSetLayoutBinding accelerationStructureLayoutBinding;
     accelerationStructureLayoutBinding.binding = SWS_SCENE_AS_BINDING;
-    accelerationStructureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NVX;
+    accelerationStructureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV;
     accelerationStructureLayoutBinding.descriptorCount = 1;
-    accelerationStructureLayoutBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_NVX;
+    accelerationStructureLayoutBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_NV;
     accelerationStructureLayoutBinding.pImmutableSamplers = nullptr;
 
     VkDescriptorSetLayoutBinding resultImageLayoutBinding;
     resultImageLayoutBinding.binding = SWS_RESULT_IMAGE_BINDING;
     resultImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     resultImageLayoutBinding.descriptorCount = 1;
-    resultImageLayoutBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_NVX;
+    resultImageLayoutBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_NV;
     resultImageLayoutBinding.pImmutableSamplers = nullptr;
 
     VkDescriptorSetLayoutBinding camdataBufferBinding;
     camdataBufferBinding.binding = SWS_CAMDATA_BINDING;
     camdataBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     camdataBufferBinding.descriptorCount = 1;
-    camdataBufferBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_NVX;
+    camdataBufferBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_NV;
     camdataBufferBinding.pImmutableSamplers = nullptr;
 
     std::vector<VkDescriptorSetLayoutBinding> bindings({
@@ -656,7 +665,7 @@ void RtxApp::CreateDescriptorSetsLayouts() {
     ssboBinding.binding = 0;
     ssboBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     ssboBinding.descriptorCount = numMeshes;
-    ssboBinding.stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_NVX;
+    ssboBinding.stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV;
     ssboBinding.pImmutableSamplers = nullptr;
 
     VkDescriptorSetLayoutCreateInfo set1LayoutInfo;
@@ -690,7 +699,7 @@ void RtxApp::CreateDescriptorSetsLayouts() {
     textureBinding.binding = 0;
     textureBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     textureBinding.descriptorCount = numMaterials;
-    textureBinding.stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_NVX;
+    textureBinding.stageFlags = VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV;
     textureBinding.pImmutableSamplers = nullptr;
 
     set1LayoutInfo.pBindings = &textureBinding;
@@ -720,30 +729,31 @@ void RtxApp::CreateRaytracingPipelineAndSBT() {
     shadowChit.LoadFromFile((sShadersFolder + "shadow_ray_chit.bin").c_str());
     shadowMiss.LoadFromFile((sShadersFolder + "shadow_ray_miss.bin").c_str());
 
-    mSBT.Initialize(2, 2, mRTProps.shaderHeaderSize);
+    mSBT.Initialize(2, 2, mRTProps.shaderGroupHandleSize);
 
-    mSBT.SetRaygenStage(rayGenShader.GetShaderStage(VK_SHADER_STAGE_RAYGEN_BIT_NVX));
+    mSBT.SetRaygenStage(rayGenShader.GetShaderStage(VK_SHADER_STAGE_RAYGEN_BIT_NV));
 
-    mSBT.AddStageToHitGroup({ rayChitShader.GetShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NVX) }, SWS_PRIMARY_HIT_SHADERS_IDX);
-    mSBT.AddStageToHitGroup({ shadowChit.GetShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NVX) }, SWS_SHADOW_HIT_SHADERS_IDX);
+    mSBT.AddStageToHitGroup({ rayChitShader.GetShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV) }, SWS_PRIMARY_HIT_SHADERS_IDX);
+    mSBT.AddStageToHitGroup({ shadowChit.GetShaderStage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV) }, SWS_SHADOW_HIT_SHADERS_IDX);
 
-    mSBT.AddStageToMissGroup(rayMissShader.GetShaderStage(VK_SHADER_STAGE_MISS_BIT_NVX), SWS_PRIMARY_MISS_SHADERS_IDX);
-    mSBT.AddStageToMissGroup(shadowMiss.GetShaderStage(VK_SHADER_STAGE_MISS_BIT_NVX), SWS_SHADOW_MISS_SHADERS_IDX);
+    mSBT.AddStageToMissGroup(rayMissShader.GetShaderStage(VK_SHADER_STAGE_MISS_BIT_NV), SWS_PRIMARY_MISS_SHADERS_IDX);
+    mSBT.AddStageToMissGroup(shadowMiss.GetShaderStage(VK_SHADER_STAGE_MISS_BIT_NV), SWS_SHADOW_MISS_SHADERS_IDX);
 
 
-    VkRaytracingPipelineCreateInfoNVX rayPipelineInfo;
-    rayPipelineInfo.sType = VK_STRUCTURE_TYPE_RAYTRACING_PIPELINE_CREATE_INFO_NVX;
+    VkRayTracingPipelineCreateInfoNV rayPipelineInfo;
+    rayPipelineInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_NV;
     rayPipelineInfo.pNext = nullptr;
     rayPipelineInfo.flags = 0;
+    rayPipelineInfo.groupCount = mSBT.GetNumGroups();
     rayPipelineInfo.stageCount = mSBT.GetNumStages();
     rayPipelineInfo.pStages = mSBT.GetStages();
-    rayPipelineInfo.pGroupNumbers = mSBT.GetGroupNumbers();
+    rayPipelineInfo.pGroups = mSBT.GetGroups();
     rayPipelineInfo.maxRecursionDepth = 1;
     rayPipelineInfo.layout = mRTPipelineLayout;
     rayPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
     rayPipelineInfo.basePipelineIndex = 0;
 
-    error = vkCreateRaytracingPipelinesNVX(mDevice, nullptr, 1, &rayPipelineInfo, nullptr, &mRTPipeline);
+    error = vkCreateRayTracingPipelinesNV(mDevice, nullptr, 1, &rayPipelineInfo, nullptr, &mRTPipeline);
     CHECK_VK_ERROR(error, "vkCreateRaytracingPipelinesNVX");
 
     mSBT.CreateSBT(mDevice, mRTPipeline);
@@ -754,7 +764,7 @@ void RtxApp::UpdateDescriptorSets() {
     const uint32_t numMaterials = static_cast<uint32_t>(mScene.materials.size());
 
     std::vector<VkDescriptorPoolSize> poolSizes({
-        { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NVX, 1 },       // top-level AS
+        { VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV, 1 },        // top-level AS
         { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },                    // output image
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },                   // Camera data
         //
@@ -804,8 +814,8 @@ void RtxApp::UpdateDescriptorSets() {
 
     ///////////////////////////////////////////////////////////
 
-    VkDescriptorAccelerationStructureInfoNVX descriptorAccelerationStructureInfo;
-    descriptorAccelerationStructureInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_ACCELERATION_STRUCTURE_INFO_NVX;
+    VkWriteDescriptorSetAccelerationStructureNV descriptorAccelerationStructureInfo;
+    descriptorAccelerationStructureInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_NV;
     descriptorAccelerationStructureInfo.pNext = nullptr;
     descriptorAccelerationStructureInfo.accelerationStructureCount = 1;
     descriptorAccelerationStructureInfo.pAccelerationStructures = &mScene.topLevelAS.accelerationStructure;
@@ -817,7 +827,7 @@ void RtxApp::UpdateDescriptorSets() {
     accelerationStructureWrite.dstBinding = SWS_SCENE_AS_BINDING;
     accelerationStructureWrite.dstArrayElement = 0;
     accelerationStructureWrite.descriptorCount = 1;
-    accelerationStructureWrite.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NVX;
+    accelerationStructureWrite.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV;
     accelerationStructureWrite.pImageInfo = nullptr;
     accelerationStructureWrite.pBufferInfo = nullptr;
     accelerationStructureWrite.pTexelBufferView = nullptr;
@@ -953,14 +963,14 @@ void SBTHelper::Initialize(const uint32_t numHitGroups, const uint32_t numMissGr
     mNumMissShaders.resize(numMissGroups, 0u);
 
     mStages.clear();
-    mGroupNumbers.clear();
+    mGroups.clear();
 }
 
 void SBTHelper::Destroy() {
     mNumHitShaders.clear();
     mNumMissShaders.clear();
     mStages.clear();
-    mGroupNumbers.clear();
+    mGroups.clear();
 
     mSBT.Destroy();
 }
@@ -969,7 +979,14 @@ void SBTHelper::SetRaygenStage(const VkPipelineShaderStageCreateInfo& stage) {
     // this shader stage should go first!
     assert(mStages.empty());
     mStages.push_back(stage);
-    mGroupNumbers.push_back(0); // group 0 is always for raygen
+
+    VkRayTracingShaderGroupCreateInfoNV groupInfo = {};
+    groupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV;
+    groupInfo.pNext = nullptr;
+    groupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV;
+    groupInfo.generalShader = 0;
+    groupInfo.closestHitShader = groupInfo.anyHitShader = groupInfo.intersectionShader = (~0u);
+    mGroups.push_back(groupInfo); // group 0 is always for raygen
 }
 
 void SBTHelper::AddStageToHitGroup(const Array<VkPipelineShaderStageCreateInfo>& stages, const uint32_t groupIndex) {
@@ -989,11 +1006,21 @@ void SBTHelper::AddStageToHitGroup(const Array<VkPipelineShaderStageCreateInfo>&
     auto itStage = mStages.begin() + offset;
     mStages.insert(itStage, stages.begin(), stages.end());
 
-    const uint32_t groupNumber = groupIndex + 1; // group 0 is always for raygen
-    auto itNumber = mGroupNumbers.begin() + offset;
-    for (size_t i = 0; i < stages.size(); ++i, ++itNumber) {
-        itNumber = mGroupNumbers.insert(itNumber, groupNumber);
-    }
+    VkRayTracingShaderGroupCreateInfoNV groupInfo = {};
+    groupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV;
+    groupInfo.pNext = nullptr;
+    groupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV;
+    groupInfo.generalShader = groupInfo.closestHitShader = groupInfo.anyHitShader = groupInfo.intersectionShader = (~0u);
+
+    for (size_t i = 0; i < stages.size(); i++) {
+        const auto StageIdx = offset+i;
+        if (stages[i].stage == VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV || stages[i].stage == VK_SHADER_STAGE_ANY_HIT_BIT_NV) groupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_NV;
+        if (stages[i].stage == VK_SHADER_STAGE_RAYGEN_BIT_NV || stages[i].stage == VK_SHADER_STAGE_MISS_BIT_NV) groupInfo.generalShader = StageIdx;
+        if (stages[i].stage == VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV) groupInfo.closestHitShader = StageIdx;
+        if (stages[i].stage == VK_SHADER_STAGE_ANY_HIT_BIT_NV) groupInfo.anyHitShader = StageIdx;
+    };
+
+    mGroups.insert((mGroups.begin() + 1 + groupIndex), groupInfo);
 
     mNumHitShaders[groupIndex] += static_cast<uint32_t>(stages.size());
 }
@@ -1016,12 +1043,20 @@ void SBTHelper::AddStageToMissGroup(const VkPipelineShaderStageCreateInfo& stage
         offset += mNumMissShaders[i];
     }
 
-    auto itWhere = mStages.begin() + offset;
-    mStages.insert(itWhere, stage);
+    mStages.insert(mStages.begin() + offset, stage);
 
-    const uint32_t groupNumber = groupIndex + 1 + mNumHitGroups; // group 0 is always for raygen, then go hit shaders
-    auto itNumber = mGroupNumbers.begin() + offset;
-    mGroupNumbers.insert(itNumber, groupNumber);
+    // group create info 
+    VkRayTracingShaderGroupCreateInfoNV groupInfo = {};
+    groupInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV;
+    groupInfo.pNext = nullptr;
+    groupInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV;
+    groupInfo.generalShader = offset;
+    groupInfo.closestHitShader = (~0u);
+    groupInfo.anyHitShader = (~0u);
+    groupInfo.intersectionShader = (~0u);
+
+    // group 0 is always for raygen, then go hit shaders
+    mGroups.insert((mGroups.begin() + (groupIndex + 1 + mNumHitGroups)), groupInfo);
 
     mNumMissShaders[groupIndex]++;
 }
@@ -1054,8 +1089,8 @@ const VkPipelineShaderStageCreateInfo* SBTHelper::GetStages() const {
     return mStages.data();
 }
 
-const uint32_t* SBTHelper::GetGroupNumbers() const {
-    return mGroupNumbers.data();
+const VkRayTracingShaderGroupCreateInfoNV* SBTHelper::GetGroups() const {
+    return mGroups.data();
 }
 
 uint32_t SBTHelper::GetSBTSize() const {
@@ -1065,7 +1100,7 @@ uint32_t SBTHelper::GetSBTSize() const {
 bool SBTHelper::CreateSBT(VkDevice device, VkPipeline rtPipeline) {
     const size_t sbtSize = this->GetSBTSize();
 
-    VkResult error = mSBT.Create(sbtSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_RAYTRACING_BIT_NVX, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    VkResult error = mSBT.Create(sbtSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_RAY_TRACING_BIT_NV, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
     CHECK_VK_ERROR(error, "mSBT.Create");
 
     if (VK_SUCCESS != error) {
@@ -1073,7 +1108,7 @@ bool SBTHelper::CreateSBT(VkDevice device, VkPipeline rtPipeline) {
     }
 
     void* mem = mSBT.Map();
-    error = vkGetRaytracingShaderHandlesNVX(device, rtPipeline, 0, this->GetNumGroups(), sbtSize, mem);
+    error = vkGetRayTracingShaderGroupHandlesNV(device, rtPipeline, 0, this->GetNumGroups(), sbtSize, mem);
     CHECK_VK_ERROR(error, L"vkGetRaytracingShaderHandleNV");
     mSBT.Unmap();
 

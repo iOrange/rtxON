@@ -15,3 +15,5 @@ set BINARIES_FOLDER="./shaders/"
 :: miss shaders
 %GLSL_COMPILER% -V -S rmiss %SOURCE_FOLDER%ray_miss.glsl -o %BINARIES_FOLDER%ray_miss.bin
 %GLSL_COMPILER% -V -S rmiss %SOURCE_FOLDER%shadow_ray_miss.glsl -o %BINARIES_FOLDER%shadow_ray_miss.bin
+
+pause

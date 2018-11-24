@@ -4,9 +4,10 @@
 #include "framework/camera.h"
 
 struct RTAccelerationStructure {
-    VkDeviceMemory              memory;
-    VkAccelerationStructureNVX  accelerationStructure;
-    uint64_t                    handle;
+    VkDeviceMemory                memory;
+    VkAccelerationStructureInfoNV accelerationStructureInfo;
+    VkAccelerationStructureNV     accelerationStructure;
+    uint64_t                      handle;
 };
 
 struct RTMesh {
@@ -56,23 +57,23 @@ public:
     uint32_t    GetHitGroupsOffset() const;
     uint32_t    GetMissGroupsOffset() const;
 
-    uint32_t                                GetNumStages() const;
-    const VkPipelineShaderStageCreateInfo*  GetStages() const;
-    const uint32_t*                         GetGroupNumbers() const;
+    uint32_t                                   GetNumStages() const;
+    const VkPipelineShaderStageCreateInfo*     GetStages() const;
+    const VkRayTracingShaderGroupCreateInfoNV* GetGroups() const;
 
     uint32_t    GetSBTSize() const;
     bool        CreateSBT(VkDevice device, VkPipeline rtPipeline);
     VkBuffer    GetSBTBuffer() const;
 
 private:
-    uint32_t                                mShaderHeaderSize;
-    uint32_t                                mNumHitGroups;
-    uint32_t                                mNumMissGroups;
-    Array<uint32_t>                         mNumHitShaders;
-    Array<uint32_t>                         mNumMissShaders;
-    Array<VkPipelineShaderStageCreateInfo>  mStages;
-    Array<uint32_t>                         mGroupNumbers;
-    vulkanhelpers::Buffer                   mSBT;
+    uint32_t                                   mShaderHeaderSize;
+    uint32_t                                   mNumHitGroups;
+    uint32_t                                   mNumMissGroups;
+    Array<uint32_t>                            mNumHitShaders;
+    Array<uint32_t>                            mNumMissShaders;
+    Array<VkPipelineShaderStageCreateInfo>     mStages;
+    Array<VkRayTracingShaderGroupCreateInfoNV> mGroups;
+    vulkanhelpers::Buffer                      mSBT;
 };
 
 
@@ -93,9 +94,9 @@ protected:
     virtual void Update(const size_t imageIndex, const float dt) override;
 
 private:
-    bool CreateAS(const VkAccelerationStructureTypeNVX type,
+    bool CreateAS(const VkAccelerationStructureTypeNV type,
                   const uint32_t geometryCount,
-                  const VkGeometryNVX* geometries,
+                  const VkGeometryNV* geometries,
                   const uint32_t instanceCount,
                   RTAccelerationStructure& _as);
     void LoadSceneGeometry();
