@@ -1,1 +1,1 @@
-Run _data/compile_shaders.cmd to compile shaders
+Run _data/compile_shaders.cmd or _data/compile_shaders.sh to compile shaders

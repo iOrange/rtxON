@@ -1,11 +1,4 @@
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
 #include "vulkanapp.h"
-
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
 
 // include volk.c for implementation
 #include "volk.c"
@@ -350,14 +343,7 @@ bool VulkanApp::InitializeDevicesAndQueues() {
 }
 
 bool VulkanApp::InitializeSurface() {
-    VkWin32SurfaceCreateInfoKHR surfaceCreateInfo;
-    surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    surfaceCreateInfo.pNext = nullptr;
-    surfaceCreateInfo.flags = 0;
-    surfaceCreateInfo.hinstance = ::GetModuleHandle(nullptr);
-    surfaceCreateInfo.hwnd = glfwGetWin32Window(mWindow);
-
-    VkResult error = vkCreateWin32SurfaceKHR(mInstance, &surfaceCreateInfo, nullptr, &mSurface);
+    VkResult error = glfwCreateWindowSurface(mInstance, mWindow, nullptr, &mSurface);
     if (VK_SUCCESS != error) {
         CHECK_VK_ERROR(error, "vkCreateWin32SurfaceKHR");
         return false;
