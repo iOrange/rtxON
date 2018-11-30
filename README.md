@@ -7,7 +7,7 @@ Please visit https://iorange.github.io for the articles
  * clone this repo
  * get all dependencies by calling `git submodule update --init --recursive`
  * go to `_data` folder and execute `compile_shaders.cmd`
- * now go back to the repo folder and use premake5.exe to generate your project (`premake5 vs2017` for example)
+ * now go back to the repo folder and use CMake to generate your project
  * now just open your project and build it
  * enjoy the power of RTX ;)
 
