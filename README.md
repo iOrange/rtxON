@@ -6,7 +6,7 @@ Please visit https://iorange.github.io for the articles
 ## Building instructions:
  * clone this repo
  * get all dependencies by calling `git submodule update --init --recursive`
- * go to `_data` folder and execute `compile_shaders.cmd` or `compile_shaders.cmd`
+ * go to `_data` folder and execute `compile_shaders.cmd` or `compile_shaders.sh`
  * now go back to the repo folder and use CMake to generate your project
  * now just open your project and build it (or simply run `make` if on Linux)
  * enjoy the power of RTX ;)
