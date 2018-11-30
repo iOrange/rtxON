@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include <cstring> // for memcpy
 
 
 #define STB_IMAGE_IMPLEMENTATION

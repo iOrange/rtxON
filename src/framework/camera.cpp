@@ -1,4 +1,4 @@
-#include "Camera.h"
+#include "camera.h"
 
 static const vec3 sCameraUp(0.0f, 1.0f, 0.0f);
 

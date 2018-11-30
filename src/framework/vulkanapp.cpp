@@ -176,8 +176,13 @@ bool VulkanApp::InitializeVulkan() {
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION_1_1;
 
-    Array<const char*> extensions({ VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_WIN32_SURFACE_EXTENSION_NAME });
+    uint32_t requiredExtensionsCount = 0;
+    const char** requiredExtensions = glfwGetRequiredInstanceExtensions(&requiredExtensionsCount);
+
+    Array<const char*> extensions;
     Array<const char*> layers;
+
+    extensions.insert(extensions.begin(), requiredExtensions, requiredExtensions + requiredExtensionsCount);
 
     if (mSettings.enableValidation) {
         extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
@@ -345,7 +350,7 @@ bool VulkanApp::InitializeDevicesAndQueues() {
 bool VulkanApp::InitializeSurface() {
     VkResult error = glfwCreateWindowSurface(mInstance, mWindow, nullptr, &mSurface);
     if (VK_SUCCESS != error) {
-        CHECK_VK_ERROR(error, "vkCreateWin32SurfaceKHR");
+        CHECK_VK_ERROR(error, "glfwCreateWindowSurface");
         return false;
     }
 

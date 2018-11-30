@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <string>
+#include <sstream>
+#include <iomanip>
 
 template <typename T>
 using Array = std::vector<T>;
