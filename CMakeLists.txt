@@ -1,4 +1,11 @@
 cmake_minimum_required(VERSION 3.1)
+
+# 32-bi is not supported
+if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message("Please switch to x64 build.")
+    return()
+endif()
+
 project(rtxON CXX)
 
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "GLFW_BUILD_EXAMPLES" FORCE)
