@@ -753,7 +753,7 @@ void RtxApp::CreateRaytracingPipelineAndSBT() {
     rayPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
     rayPipelineInfo.basePipelineIndex = 0;
 
-    error = vkCreateRayTracingPipelinesNV(mDevice, nullptr, 1, &rayPipelineInfo, nullptr, &mRTPipeline);
+    error = vkCreateRayTracingPipelinesNV(mDevice, VK_NULL_HANDLE, 1, &rayPipelineInfo, VK_NULL_HANDLE, &mRTPipeline);
     CHECK_VK_ERROR(error, "vkCreateRaytracingPipelinesNVX");
 
     mSBT.CreateSBT(mDevice, mRTPipeline);
@@ -835,7 +835,7 @@ void RtxApp::UpdateDescriptorSets() {
     ///////////////////////////////////////////////////////////
 
     VkDescriptorImageInfo descriptorOutputImageInfo;
-    descriptorOutputImageInfo.sampler = nullptr;
+    descriptorOutputImageInfo.sampler = VK_NULL_HANDLE;
     descriptorOutputImageInfo.imageView = mOffscreenImage.GetImageView();
     descriptorOutputImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 

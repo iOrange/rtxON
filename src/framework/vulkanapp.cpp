@@ -615,7 +615,7 @@ void VulkanApp::ProcessFrame(const float dt) {
     mFPSMeter.Update(dt);
 
     uint32_t imageIndex;
-    VkResult error = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, mSemaphoreImageAcquired, nullptr, &imageIndex);
+    VkResult error = vkAcquireNextImageKHR(mDevice, mSwapchain, UINT64_MAX, mSemaphoreImageAcquired, VK_NULL_HANDLE, &imageIndex);
     if (VK_SUCCESS != error) {
         return;
     }
