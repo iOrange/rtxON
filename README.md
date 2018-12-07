@@ -10,6 +10,8 @@ Please visit https://iorange.github.io for the articles
  * now go back to the repo folder and use CMake to generate your project _(please note that only x64 is supported)_
  * now just open your project and build it (or simply run `make` if on Linux)
  * enjoy the power of RTX ;)
+ 
+ > Please note that if you want to use validation layers - make sure you have Vulkan SDK version 1.1.9.1 or newer installed
 
 ## Happy Triangle!
 ![Happy Triangle!](https://user-images.githubusercontent.com/7016607/47895234-aa84c780-de3d-11e8-8715-4b156d67b783.png)
