@@ -25,4 +25,6 @@ include_directories(
 
 add_executable(${PROJECT_NAME} ${HEADERS} ${SOURCES})
 
+set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+
 target_link_libraries(${PROJECT_NAME} glfw)
