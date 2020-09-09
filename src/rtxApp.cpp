@@ -220,7 +220,8 @@ bool RtxApp::CreateAS(const VkAccelerationStructureTypeNV type,
     memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_OBJECT_NV;
     memoryRequirementsInfo.accelerationStructure = _as.accelerationStructure;
 
-    VkMemoryRequirements2 memoryRequirements;
+    VkMemoryRequirements2 memoryRequirements = {};
+    memoryRequirements.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
     vkGetAccelerationStructureMemoryRequirementsNV(mDevice, &memoryRequirementsInfo, &memoryRequirements);
 
     VkMemoryAllocateInfo memoryAllocateInfo;
@@ -484,13 +485,15 @@ void RtxApp::CreateScene() {
         memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
         memoryRequirementsInfo.accelerationStructure = mesh.blas.accelerationStructure;
 
-        VkMemoryRequirements2 memReqBLAS;
+        VkMemoryRequirements2 memReqBLAS = {};
+        memReqBLAS.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
         vkGetAccelerationStructureMemoryRequirementsNV(mDevice, &memoryRequirementsInfo, &memReqBLAS);
 
         maximumBlasSize = Max(maximumBlasSize, memReqBLAS.memoryRequirements.size);
     }
 
-    VkMemoryRequirements2 memReqTLAS;
+    VkMemoryRequirements2 memReqTLAS = {};
+    memReqTLAS.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
     memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
     memoryRequirementsInfo.accelerationStructure = mScene.topLevelAS.accelerationStructure;
     vkGetAccelerationStructureMemoryRequirementsNV(mDevice, &memoryRequirementsInfo, &memReqTLAS);
