@@ -4,10 +4,10 @@
 #include "framework/camera.h"
 
 struct RTAccelerationStructure {
-    VkDeviceMemory                memory;
-    VkAccelerationStructureInfoNV accelerationStructureInfo;
-    VkAccelerationStructureNV     accelerationStructure;
-    uint64_t                      handle;
+    VkDeviceMemory                          memory;
+    VkAccelerationStructureCreateInfoKHR    accelerationStructureInfo;
+    VkAccelerationStructureKHR              accelerationStructure;
+    VkDeviceAddress                         handle;
 };
 
 struct RTMesh {
@@ -28,9 +28,9 @@ struct RTMaterial {
 };
 
 struct RTScene {
-    Array<RTMesh>               meshes;
-    Array<RTMaterial>           materials;
-    RTAccelerationStructure     topLevelAS;
+    Array<RTMesh>                   meshes;
+    Array<RTMaterial>               materials;
+    RTAccelerationStructure         topLevelAS;
 
     // shader resources stuff
     Array<VkDescriptorBufferInfo>   matIDsBufferInfos;
@@ -45,7 +45,7 @@ public:
     SBTHelper();
     ~SBTHelper() = default;
 
-    void        Initialize(const uint32_t numHitGroups, const uint32_t numMissGroups, const uint32_t shaderHeaderSize);
+    void        Initialize(const uint32_t numHitGroups, const uint32_t numMissGroups, const uint32_t shaderHandleSize, const uint32_t shaderGroupAlignment);
     void        Destroy();
     void        SetRaygenStage(const VkPipelineShaderStageCreateInfo& stage);
     void        AddStageToHitGroup(const Array<VkPipelineShaderStageCreateInfo>& stages, const uint32_t groupIndex);
@@ -54,26 +54,30 @@ public:
     uint32_t    GetGroupsStride() const;
     uint32_t    GetNumGroups() const;
     uint32_t    GetRaygenOffset() const;
+    uint32_t    GetRaygenSize() const;
     uint32_t    GetHitGroupsOffset() const;
+    uint32_t    GetHitGroupsSize() const;
     uint32_t    GetMissGroupsOffset() const;
+    uint32_t    GetMissGroupsSize() const;
 
-    uint32_t                                   GetNumStages() const;
-    const VkPipelineShaderStageCreateInfo*     GetStages() const;
-    const VkRayTracingShaderGroupCreateInfoNV* GetGroups() const;
+    uint32_t                                    GetNumStages() const;
+    const VkPipelineShaderStageCreateInfo*      GetStages() const;
+    const VkRayTracingShaderGroupCreateInfoKHR* GetGroups() const;
 
     uint32_t    GetSBTSize() const;
     bool        CreateSBT(VkDevice device, VkPipeline rtPipeline);
     VkBuffer    GetSBTBuffer() const;
 
 private:
-    uint32_t                                   mShaderHeaderSize;
-    uint32_t                                   mNumHitGroups;
-    uint32_t                                   mNumMissGroups;
-    Array<uint32_t>                            mNumHitShaders;
-    Array<uint32_t>                            mNumMissShaders;
-    Array<VkPipelineShaderStageCreateInfo>     mStages;
-    Array<VkRayTracingShaderGroupCreateInfoNV> mGroups;
-    vulkanhelpers::Buffer                      mSBT;
+    uint32_t                                    mShaderHandleSize;
+    uint32_t                                    mShaderGroupAlignment;
+    uint32_t                                    mNumHitGroups;
+    uint32_t                                    mNumMissGroups;
+    Array<uint32_t>                             mNumHitShaders;
+    Array<uint32_t>                             mNumMissShaders;
+    Array<VkPipelineShaderStageCreateInfo>      mStages;
+    Array<VkRayTracingShaderGroupCreateInfoKHR> mGroups;
+    vulkanhelpers::Buffer                       mSBTBuffer;
 };
 
 
@@ -94,9 +98,9 @@ protected:
     virtual void Update(const size_t imageIndex, const float dt) override;
 
 private:
-    bool CreateAS(const VkAccelerationStructureTypeNV type,
+    bool CreateAS(const VkAccelerationStructureTypeKHR type,
                   const uint32_t geometryCount,
-                  const VkGeometryNV* geometries,
+                  const VkAccelerationStructureCreateGeometryTypeInfoKHR* geometries,
                   const uint32_t instanceCount,
                   RTAccelerationStructure& _as);
     void LoadSceneGeometry();

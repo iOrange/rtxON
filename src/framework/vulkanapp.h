@@ -93,7 +93,7 @@ protected:
     VkQueue                 mTransferQueue;
 
     // RTX stuff
-    VkPhysicalDeviceRayTracingPropertiesNV mRTProps;
+    VkPhysicalDeviceRayTracingPropertiesKHR mRTProps;
 
     // FPS meter
     FPSMeter                mFPSMeter;

@@ -104,6 +104,13 @@ VkResult Buffer::Create(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPro
         memoryAllocateInfo.allocationSize = memoryRequirements.size;
         memoryAllocateInfo.memoryTypeIndex = GetMemoryType(memoryRequirements, memoryProperties);
 
+        VkMemoryAllocateFlagsInfo allocationFlags = {};
+        allocationFlags.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+        allocationFlags.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+        if ((usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) == VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+            memoryAllocateInfo.pNext = &allocationFlags;
+        }
+
         result = vkAllocateMemory(__details::sDevice, &memoryAllocateInfo, nullptr, &mMemory);
         if (VK_SUCCESS != result) {
             vkDestroyBuffer(__details::sDevice, mBuffer, nullptr);
@@ -197,10 +204,8 @@ VkResult Image::Create(VkImageType imageType,
 
     mFormat = format;
 
-    VkImageCreateInfo imageCreateInfo;
+    VkImageCreateInfo imageCreateInfo = {};
     imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageCreateInfo.pNext = nullptr;
-    imageCreateInfo.flags = 0;
     imageCreateInfo.imageType = imageType;
     imageCreateInfo.format = format;
     imageCreateInfo.extent = extent;
@@ -210,18 +215,15 @@ VkResult Image::Create(VkImageType imageType,
     imageCreateInfo.tiling = tiling;
     imageCreateInfo.usage = usage;
     imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    imageCreateInfo.queueFamilyIndexCount = 0;
-    imageCreateInfo.pQueueFamilyIndices = nullptr;
     imageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     result = vkCreateImage(__details::sDevice, &imageCreateInfo, nullptr, &mImage);
     if (VK_SUCCESS == result) {
-        VkMemoryRequirements memoryRequirements;
+        VkMemoryRequirements memoryRequirements = {};
         vkGetImageMemoryRequirements(__details::sDevice, mImage, &memoryRequirements);
 
-        VkMemoryAllocateInfo memoryAllocateInfo;
+        VkMemoryAllocateInfo memoryAllocateInfo = {};
         memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        memoryAllocateInfo.pNext = nullptr;
         memoryAllocateInfo.allocationSize = memoryRequirements.size;
         memoryAllocateInfo.memoryTypeIndex = GetMemoryType(memoryRequirements, memoryProperties);
 
@@ -300,9 +302,8 @@ bool Image::Load(const char* fileName) {
                 return false;
             }
 
-            VkCommandBufferAllocateInfo allocInfo;
+            VkCommandBufferAllocateInfo allocInfo = {};
             allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocInfo.pNext = nullptr;
             allocInfo.commandPool = __details::sCommandPool;
             allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             allocInfo.commandBufferCount = 1;
@@ -313,11 +314,9 @@ bool Image::Load(const char* fileName) {
                 return false;
             }
 
-            VkCommandBufferBeginInfo beginInfo;
+            VkCommandBufferBeginInfo beginInfo = {};
             beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-            beginInfo.pNext = nullptr;
             beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-            beginInfo.pInheritanceInfo = nullptr;
 
             error = vkBeginCommandBuffer(commandBuffer, &beginInfo);
             if (VK_SUCCESS != error) {
@@ -325,10 +324,8 @@ bool Image::Load(const char* fileName) {
                 return false;
             }
 
-            VkImageMemoryBarrier barrier;
+            VkImageMemoryBarrier barrier = {};
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;;
-            barrier.pNext = nullptr;
-            barrier.srcAccessMask = 0;
             barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
             barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -339,12 +336,8 @@ bool Image::Load(const char* fileName) {
 
             vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-            VkBufferImageCopy region;
-            region.bufferOffset = 0;
-            region.bufferRowLength = 0;
-            region.bufferImageHeight = 0;
+            VkBufferImageCopy region = {};
             region.imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-            region.imageOffset = { 0, 0, 0 };
             region.imageExtent = imageExtent;
 
             vkCmdCopyBufferToImage(commandBuffer, stagingBuffer.GetBuffer(), mImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
@@ -362,16 +355,10 @@ bool Image::Load(const char* fileName) {
                 return false;
             }
 
-            VkSubmitInfo submitInfo;
+            VkSubmitInfo submitInfo = {};
             submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            submitInfo.pNext = nullptr;
-            submitInfo.waitSemaphoreCount = 0;
-            submitInfo.pWaitSemaphores = nullptr;
-            submitInfo.pWaitDstStageMask = nullptr;
             submitInfo.commandBufferCount = 1;
             submitInfo.pCommandBuffers = &commandBuffer;
-            submitInfo.signalSemaphoreCount = 0;
-            submitInfo.pSignalSemaphores = nullptr;
 
             error = vkQueueSubmit(__details::sTransferQueue, 1, &submitInfo, VK_NULL_HANDLE);
             if (VK_SUCCESS != error) {
@@ -502,6 +489,30 @@ VkPipelineShaderStageCreateInfo Shader::GetShaderStage(VkShaderStageFlagBits sta
         /*pName*/ "main",
         /*pSpecializationInfo*/ nullptr
     };
+}
+
+
+
+VkDeviceOrHostAddressKHR GetBufferDeviceAddress(const vulkanhelpers::Buffer& buffer) {
+    VkBufferDeviceAddressInfoKHR info = {
+        VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+        nullptr,
+        buffer.GetBuffer()
+    };
+
+    VkDeviceOrHostAddressKHR result;
+    result.deviceAddress = vkGetBufferDeviceAddressKHR(vulkanhelpers::__details::sDevice, &info);
+
+    return result;
+}
+
+VkDeviceOrHostAddressConstKHR GetBufferDeviceAddressConst(const vulkanhelpers::Buffer& buffer) {
+    VkDeviceOrHostAddressKHR address = GetBufferDeviceAddress(buffer);
+
+    VkDeviceOrHostAddressConstKHR result;
+    result.deviceAddress = address.deviceAddress;
+
+    return result;
 }
 
 } // namespace vulkanhelpers

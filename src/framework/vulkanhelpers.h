@@ -1,5 +1,6 @@
 #pragma once
 #define VK_NO_PROTOTYPES
+#define VK_ENABLE_BETA_EXTENSIONS
 #include "vulkan/vulkan.h"
 #include "volk.h"
 
@@ -102,5 +103,10 @@ namespace vulkanhelpers {
     private:
         VkShaderModule  mModule;
     };
+
+
+
+    VkDeviceOrHostAddressKHR GetBufferDeviceAddress(const Buffer& buffer);
+    VkDeviceOrHostAddressConstKHR GetBufferDeviceAddressConst(const Buffer& buffer);
 
 } // namespace vulkanhelpers
