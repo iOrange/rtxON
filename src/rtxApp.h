@@ -4,8 +4,7 @@
 #include "framework/camera.h"
 
 struct RTAccelerationStructure {
-    VkDeviceMemory                          memory;
-    VkAccelerationStructureCreateInfoKHR    accelerationStructureInfo;
+    vulkanhelpers::Buffer                   buffer;
     VkAccelerationStructureKHR              accelerationStructure;
     VkDeviceAddress                         handle;
 };
@@ -37,6 +36,9 @@ struct RTScene {
     Array<VkDescriptorBufferInfo>   attribsBufferInfos;
     Array<VkDescriptorBufferInfo>   facesBufferInfos;
     Array<VkDescriptorImageInfo>    texturesInfos;
+
+    void    BuildBLAS(VkDevice device, VkCommandPool cmdPool, VkQueue queue);
+    void    BuildTLAS(VkDevice device, VkCommandPool cmdPool, VkQueue queue);
 };
 
 
@@ -66,7 +68,7 @@ public:
 
     uint32_t    GetSBTSize() const;
     bool        CreateSBT(VkDevice device, VkPipeline rtPipeline);
-    VkBuffer    GetSBTBuffer() const;
+    VkDeviceAddress GetSBTAddress() const;
 
 private:
     uint32_t                                    mShaderHandleSize;
@@ -98,11 +100,6 @@ protected:
     virtual void Update(const size_t imageIndex, const float dt) override;
 
 private:
-    bool CreateAS(const VkAccelerationStructureTypeKHR type,
-                  const uint32_t geometryCount,
-                  const VkAccelerationStructureCreateGeometryTypeInfoKHR* geometries,
-                  const uint32_t instanceCount,
-                  RTAccelerationStructure& _as);
     void LoadSceneGeometry();
     void CreateScene();
     void CreateCamera();
@@ -121,6 +118,8 @@ private:
     SBTHelper                       mSBT;
 
     RTScene                         mScene;
+    vulkanhelpers::Image            mEnvTexture;
+    VkDescriptorImageInfo           mEnvTextureDescInfo;
 
     // camera a& user input
     Camera                          mCamera;

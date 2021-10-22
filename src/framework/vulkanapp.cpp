@@ -291,10 +291,13 @@ bool VulkanApp::InitializeDevicesAndQueues() {
     VkPhysicalDeviceFeatures2 features2 = { };
     features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 
-    VkPhysicalDeviceRayTracingFeaturesKHR rayTracing = { };
-    rayTracing.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_FEATURES_KHR;
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline = {};
+    rayTracingPipeline.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
 
-    VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddress = { };
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR rayTracingStructure = {};
+    rayTracingStructure.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+
+    VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddress = {};
     bufferDeviceAddress.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
 
     Array<const char*> deviceExtensions({ VK_KHR_SWAPCHAIN_EXTENSION_NAME });
@@ -302,7 +305,8 @@ bool VulkanApp::InitializeDevicesAndQueues() {
         deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
         deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
         deviceExtensions.push_back(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
-        deviceExtensions.push_back(VK_KHR_RAY_TRACING_EXTENSION_NAME);
+        deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+        deviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
 
         // VK_KHR_ray_tracing requires VK_EXT_descriptor_indexing extension so we make sure it's enabled as well
         if (!mSettings.supportDescriptorIndexing) {
@@ -310,9 +314,11 @@ bool VulkanApp::InitializeDevicesAndQueues() {
         }
 
         bufferDeviceAddress.bufferDeviceAddress = VK_TRUE;
-        rayTracing.pNext = &bufferDeviceAddress;
-        rayTracing.rayTracing = VK_TRUE;
-        features2.pNext = &rayTracing;
+        rayTracingPipeline.pNext = &bufferDeviceAddress;
+        rayTracingPipeline.rayTracingPipeline = VK_TRUE;
+        rayTracingStructure.pNext = &rayTracingPipeline;
+        rayTracingStructure.accelerationStructure = VK_TRUE;
+        features2.pNext = &rayTracingStructure;
     }
 
     VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexing = { };
@@ -355,15 +361,13 @@ bool VulkanApp::InitializeDevicesAndQueues() {
 
     // if raytracing support requested - let's get raytracing properties to know shader header size and max recursion
     if (mSettings.supportRaytracing) {
-        mRTProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_KHR;
-        mRTProps.pNext = nullptr;
-        mRTProps.maxRecursionDepth = 0;
-        mRTProps.shaderGroupHandleSize = 0;
+        mRTProps = {};
+        mRTProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
 
         VkPhysicalDeviceProperties2 devProps;
         devProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         devProps.pNext = &mRTProps;
-        devProps.properties = { };
+        devProps.properties = {};
 
         vkGetPhysicalDeviceProperties2(mPhysicalDevice, &devProps);
     }

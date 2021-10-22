@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.10)
 
 project(rtxON CXX)
 
@@ -8,7 +8,7 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL "GLFW_BUILD_DOCS" FORCE)
 set(GLFW_INSTALL OFF CACHE BOOL "GLFW_INSTALL" FORCE)
 add_subdirectory("external/glfw")
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 file(GLOB_RECURSE HEADERS "src/*.h")
 file(GLOB_RECURSE SOURCES "src/*.cpp")
@@ -25,6 +25,6 @@ include_directories(
 
 add_executable(${PROJECT_NAME} ${HEADERS} ${SOURCES})
 
-set_property(TARGET ${PROJECT_NAME} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
 target_link_libraries(${PROJECT_NAME} glfw)
