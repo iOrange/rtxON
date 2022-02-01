@@ -421,6 +421,10 @@ bool VulkanApp::InitializeSwapchain() {
         return false;
     }
 
+    // make sure we stay in our surface's limits
+    mSettings.resolutionX = Clamp(mSettings.resolutionX, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.currentExtent.width);
+    mSettings.resolutionY = Clamp(mSettings.resolutionY, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.currentExtent.height);
+
     uint32_t presentModeCount;
     vkGetPhysicalDeviceSurfacePresentModesKHR(mPhysicalDevice, mSurface, &presentModeCount, nullptr);
     Array<VkPresentModeKHR> presentModes(presentModeCount);
