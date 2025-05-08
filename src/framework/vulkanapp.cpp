@@ -218,7 +218,19 @@ bool VulkanApp::InitializeDevicesAndQueues() {
 
     Array<VkPhysicalDevice> physDevices(numPhysDevices);
     vkEnumeratePhysicalDevices(mInstance, &numPhysDevices, physDevices.data());
-    mPhysicalDevice = physDevices[0];
+    mPhysicalDevice = VK_NULL_HANDLE;
+
+    for (VkPhysicalDevice dev : physDevices) {
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(dev, &props);
+        if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+            mPhysicalDevice = dev;
+            break;
+        }
+    }
+
+    if (mPhysicalDevice == VK_NULL_HANDLE)
+        mPhysicalDevice = physDevices[0];
 
     // find our queues
     const VkQueueFlagBits askingFlags[3] = { VK_QUEUE_GRAPHICS_BIT, VK_QUEUE_COMPUTE_BIT, VK_QUEUE_TRANSFER_BIT };
