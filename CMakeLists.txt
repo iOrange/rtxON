@@ -25,6 +25,13 @@ include_directories(
 
 add_executable(${PROJECT_NAME} ${HEADERS} ${SOURCES})
 
+add_custom_command(
+        TARGET rtxON POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/_data
+        $<TARGET_FILE_DIR:rtxON>/_data
+)
+
 set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
 
 target_link_libraries(${PROJECT_NAME} glfw)
